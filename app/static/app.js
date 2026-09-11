@@ -33,6 +33,12 @@ function routeApp() {
     loading:        false,
     loadingStep:    0,
     _loadingTimers: [],
+    feedbackOpen:       false,
+    feedbackRating:     0,
+    feedbackHoverRating: 0,
+    feedbackComment:    '',
+    feedbackSubmitting: false,
+    feedbackDone:       false,
     geolocating:    false,
     copied:         false,
     shared:         false,
@@ -1222,6 +1228,49 @@ tr.sp td{font-weight:bold;background:#eef2ff}
       }
     },
 
+    _maybeShowFeedback() {
+      if (localStorage.getItem('feedbackDismissed') === 'true') return;
+      const count = (parseInt(localStorage.getItem('optSuccessCount') || '0', 10)) + 1;
+      localStorage.setItem('optSuccessCount', String(count));
+      if (count === 2) {
+        setTimeout(() => { this.feedbackOpen = true; }, 2000);
+      }
+    },
+
+    async submitFeedback() {
+      if (this.feedbackRating < 1) return;
+      this.feedbackSubmitting = true;
+      try {
+        const headers = { 'Content-Type': 'application/json' };
+        if (this._authToken) headers['Authorization'] = `Bearer ${this._authToken}`;
+        await fetch('/api/v1/feedback', {
+          method:  'POST',
+          headers,
+          body: JSON.stringify({
+            rating:  this.feedbackRating,
+            comment: this.feedbackComment.trim() || null,
+          }),
+        });
+        this._track('feedback_submitted', { rating: this.feedbackRating });
+      } catch (e) {
+        // fire-and-forget: don't block the thank-you UI on network errors
+      } finally {
+        this.feedbackSubmitting = false;
+        this.feedbackDone = true;
+        localStorage.setItem('feedbackDismissed', 'true');
+        setTimeout(() => { this.feedbackOpen = false; }, 1500);
+      }
+    },
+
+    closeFeedback() {
+      this.feedbackOpen = false;
+    },
+
+    dismissFeedback() {
+      localStorage.setItem('feedbackDismissed', 'true');
+      this.feedbackOpen = false;
+    },
+
     async optimize() {
       this.error  = '';
       this.result = null;
@@ -1269,6 +1318,7 @@ tr.sp td{font-weight:bold;background:#eef2ff}
             const el = document.querySelector('.result-section');
             if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.pageYOffset - 16, behavior: 'smooth' });
           });
+          this._maybeShowFeedback();
         }
       } catch (e) {
         this.error = window.I18N.err_api_connection;

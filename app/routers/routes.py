@@ -12,7 +12,7 @@ from app.config import settings
 from app.i18n import get_strings
 from app.limiter import limiter
 from app.models import (
-    Coordinates, LoginRequest, LoginResponse, MagicRequestBody, MagicRequestResponse,
+    Coordinates, FeedbackRequest, LoginRequest, LoginResponse, MagicRequestBody, MagicRequestResponse,
     MapImageRequest, OriginInfo, PolylineRequest, RouteRequest, RouteResponse, RouteStop,
     SaveRouteRequest, UserResponse,
 )
@@ -313,6 +313,19 @@ async def route_map_image(request: Request, body: MapImageRequest = Body(...)):
     if img is None:
         raise HTTPException(status_code=503, detail="Could not generate map image.")
     return Response(content=img, media_type="image/png")
+
+
+@router.post("/feedback")
+@limiter.limit("10/minute")
+async def submit_feedback(request: Request, body: FeedbackRequest = Body(...)):
+    token = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
+    current_user = await storage.get_user_by_token(token) if token else None
+    await storage.save_feedback(
+        current_user["id"] if current_user else None,
+        body.rating,
+        body.comment,
+    )
+    return {"ok": True}
 
 
 @router.get("/reverse")

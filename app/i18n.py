@@ -91,6 +91,13 @@ _STRINGS: dict[str, dict] = {
         "loading_step3":    "Otimizando a rota…",
         "loading_done":     "Pronto!",
 
+        # Feedback modal
+        "feedback_title":       "Como foi a experiência até aqui?",
+        "feedback_placeholder": "Conte um pouco mais (opcional)",
+        "feedback_submit_btn":  "Enviar",
+        "feedback_dismiss_btn": "Não mostrar novamente",
+        "feedback_thanks":      "Obrigado pelo feedback!",
+
         # Ready card
         "ready_title":      "Pronto para otimizar",
         "not_ready_title":  "Quase lá!",
@@ -504,6 +511,13 @@ _STRINGS: dict[str, dict] = {
         "loading_step2":    "Calculating distances…",
         "loading_step3":    "Optimizing route…",
         "loading_done":     "Done!",
+
+        # Feedback modal
+        "feedback_title":       "How has your experience been so far?",
+        "feedback_placeholder": "Tell us a bit more (optional)",
+        "feedback_submit_btn":  "Submit",
+        "feedback_dismiss_btn": "Don't show again",
+        "feedback_thanks":      "Thanks for your feedback!",
 
         # Ready card
         "ready_title":      "Ready to optimize",

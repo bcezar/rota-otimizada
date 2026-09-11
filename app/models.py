@@ -83,3 +83,8 @@ class MagicRequestBody(BaseModel):
 
 class MagicRequestResponse(BaseModel):
     ok: bool
+
+
+class FeedbackRequest(BaseModel):
+    rating: int = Field(..., ge=1, le=5)
+    comment: Optional[str] = Field(None, max_length=1000)

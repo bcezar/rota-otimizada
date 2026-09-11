@@ -584,6 +584,52 @@
     </div>
   </div>
 
+  <!-- Feedback modal -->
+  <div class="modal-overlay" x-show="feedbackOpen" x-transition @click.self="closeFeedback()" x-cloak>
+    <div class="modal-card modal-card-sm">
+      <button class="drawer-close" @click="closeFeedback()" aria-label="Fechar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+
+      <template x-if="!feedbackDone">
+        <div>
+          <h2 class="clear-confirm-title">{{ i18n.feedback_title }}</h2>
+
+          <div class="feedback-stars">
+            <template x-for="n in [1,2,3,4,5]" :key="n">
+              <svg class="feedback-star" width="32" height="32" viewBox="0 0 24 24"
+                   :fill="(feedbackHoverRating || feedbackRating) >= n ? '#f59e0b' : 'none'"
+                   stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                   @mouseenter="feedbackHoverRating = n" @mouseleave="feedbackHoverRating = 0"
+                   @click="feedbackRating = n">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+            </template>
+          </div>
+
+          <textarea class="feedback-textarea" rows="3"
+                    :placeholder="window.I18N.feedback_placeholder"
+                    x-model="feedbackComment"></textarea>
+
+          <button class="btn-modal-close" style="margin-top:.75rem"
+                  @click="submitFeedback()" :disabled="feedbackRating < 1 || feedbackSubmitting">
+            {{ i18n.feedback_submit_btn }}
+          </button>
+          <button class="btn-clear-cancel" style="margin-top:.4rem" @click="dismissFeedback()">
+            {{ i18n.feedback_dismiss_btn }}
+          </button>
+        </div>
+      </template>
+
+      <template x-if="feedbackDone">
+        <div class="feedback-thanks">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+          <p>{{ i18n.feedback_thanks }}</p>
+        </div>
+      </template>
+    </div>
+  </div>
+
   <div class="modal-overlay" x-show="clearConfirmOpen" x-transition @click.self="clearConfirmOpen = false">
     <div class="modal-card modal-card-sm">
       <div class="clear-confirm-icon">

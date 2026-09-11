@@ -97,6 +97,11 @@ async def init_db() -> None:
         "(address TEXT PRIMARY KEY, lat REAL NOT NULL, lng REAL NOT NULL, "
         "cached_at TEXT NOT NULL DEFAULT (datetime('now')))"
     )
+    await _execute(
+        "CREATE TABLE IF NOT EXISTS feedback "
+        "(id TEXT PRIMARY KEY, user_id TEXT, signup_source TEXT, rating INTEGER NOT NULL, "
+        "comment TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')))"
+    )
     # prune stale + excess geocoding cache entries on every startup
     await _execute(
         "DELETE FROM geocoding_cache WHERE cached_at < datetime('now', '-30 days')"
@@ -535,3 +540,14 @@ async def set_geocoding_cache(address: str, lat: float, lng: float) -> None:
         )
     except Exception:
         pass
+
+
+# ── Feedback ─────────────────────────────────────────────────────────────────
+
+async def save_feedback(user_id: Optional[str], rating: int, comment: Optional[str]) -> None:
+    if not _turso_configured():
+        return
+    await _execute(
+        "INSERT INTO feedback (id, user_id, signup_source, rating, comment) VALUES (?, ?, ?, ?, ?)",
+        [str(uuid.uuid4()), user_id, _SIGNUP_SOURCE, rating, comment],
+    )

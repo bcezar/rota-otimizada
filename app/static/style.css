@@ -1541,3 +1541,23 @@ input[type="text"]:disabled { background: #f9fafb; color: #9ca3af; cursor: defau
 .cookie-btn:hover { opacity: .85; }
 .cookie-decline { background: #334155; color: #cbd5e1; }
 .cookie-accept  { background: #1d4ed8; color: #fff; }
+
+/* === FEEDBACK MODAL === */
+.feedback-stars {
+  display: flex; justify-content: center; gap: .3rem;
+  margin: 1rem 0 1.25rem;
+}
+.feedback-star { cursor: pointer; transition: transform .1s; }
+.feedback-star:hover { transform: scale(1.12); }
+.feedback-textarea {
+  width: 100%; resize: vertical;
+  border: 1.5px solid #e5e7eb; border-radius: 10px;
+  padding: .6rem .75rem;
+  font-size: .88rem; font-family: inherit; color: #111;
+}
+.feedback-textarea:focus { outline: none; border-color: #1d4ed8; }
+.feedback-thanks {
+  display: flex; flex-direction: column; align-items: center; gap: .6rem;
+  padding: .5rem 0;
+  color: #16a34a; font-weight: 700; font-size: .95rem;
+}
