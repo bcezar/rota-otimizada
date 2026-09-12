@@ -222,19 +222,23 @@ async def stripe_webhook(request: Request):
 
 @router.post("/billing/webhook")
 async def billing_webhook(request: Request):
-    # Verify origin via header token
+    # Verify origin via header token — fail closed: an unconfigured token must never
+    # be treated as "skip verification", or the endpoint becomes unauthenticated.
+    if not settings.asaas_webhook_token:
+        raise HTTPException(status_code=501, detail="Webhook do Asaas não configurado.")
     token = request.headers.get("asaas-access-token", "")
-    if settings.asaas_webhook_token and token != settings.asaas_webhook_token:
+    if token != settings.asaas_webhook_token:
         raise HTTPException(status_code=403, detail="Webhook token inválido.")
 
     payload = await request.json()
     event = payload.get("event", "")
-    payment = payload.get("payment", {})
+    # Payment events carry the payload under "payment"; subscription events under "subscription"
+    entity = payload.get("subscription", {}) if event.startswith("SUBSCRIPTION_") else payload.get("payment", {})
 
-    # Identify user: prefer externalReference on payment, fall back to subscription's externalReference
-    user_id: Optional[str] = payment.get("externalReference")
+    # Identify user: prefer externalReference, fall back to the Asaas customer id
+    user_id: Optional[str] = entity.get("externalReference")
     if not user_id:
-        customer_id = payment.get("customer")
+        customer_id = entity.get("customer")
         if customer_id:
             user = await storage.get_user_by_asaas_customer(customer_id)
             user_id = user["id"] if user else None
@@ -246,8 +250,29 @@ async def billing_webhook(request: Request):
     if event in ("PAYMENT_RECEIVED", "PAYMENT_CONFIRMED"):
         await storage.set_user_pro(user_id, True)
         await storage.set_pro_expires_at(user_id, None)  # renewed — no expiry
+    elif event == "PAYMENT_OVERDUE":
+        # grace period before downgrading — gives the user time to pay the PIX invoice
+        expires_at = (
+            datetime.now(timezone.utc) + timedelta(days=3)
+        ).strftime("%Y-%m-%d %H:%M:%S")
+        await storage.set_pro_expires_at(user_id, expires_at)
     elif event in ("PAYMENT_REFUNDED", "PAYMENT_CHARGEBACK_REQUESTED", "PAYMENT_CHARGEBACK_DISPUTE"):
         await storage.set_user_pro(user_id, False)
         await storage.set_pro_expires_at(user_id, None)
+    elif event == "PAYMENT_RECEIVED_IN_CASH_UNDONE":
+        # a manual "received in cash" confirmation was reversed — the payment is no
+        # longer valid, so treat it the same as an overdue invoice (grace period).
+        expires_at = (
+            datetime.now(timezone.utc) + timedelta(days=3)
+        ).strftime("%Y-%m-%d %H:%M:%S")
+        await storage.set_pro_expires_at(user_id, expires_at)
+    elif event in ("SUBSCRIPTION_DELETED", "SUBSCRIPTION_INACTIVATED"):
+        # covers cancellation done outside our own /billing/subscription endpoint
+        # (e.g. directly in the Asaas dashboard) — same grace period we already grant
+        # when the user cancels through the app.
+        expires_at = (
+            datetime.now(timezone.utc) + timedelta(days=30)
+        ).strftime("%Y-%m-%d %H:%M:%S")
+        await storage.set_pro_expires_at(user_id, expires_at)
 
     return {"ok": True}
