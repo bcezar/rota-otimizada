@@ -86,6 +86,13 @@ async def account(request: Request):
             payments = await billing.list_payments(customer_id)
         except Exception:
             pass
+        if subscription is not None:
+            # Asaas advances the subscription's nextDueDate as soon as the next
+            # invoice is generated, ahead of it being paid — use the earliest
+            # unpaid invoice's due date instead, which reflects reality.
+            period_end = billing.current_period_end(payments)
+            if period_end:
+                subscription["nextDueDate"] = period_end
 
     if subscription is None and settings.stripe_secret_key and user.get("stripe_customer_id"):
         try:
@@ -145,12 +152,24 @@ async def cancel_subscription(request: Request):
     if not sub:
         raise HTTPException(status_code=404, detail="Nenhuma assinatura ativa encontrada.")
 
+    # Fetch payments before cancelling — Asaas removes pending invoices as part
+    # of the cancellation, so this is the last chance to read the current
+    # (already-paid) cycle's end date.
+    try:
+        payments = await billing.list_payments(customer_id)
+    except Exception:
+        payments = []
+    period_end = billing.current_period_end(payments)
+
     try:
         await billing.cancel_subscription(sub["id"])
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Erro ao cancelar assinatura: {exc}") from exc
 
-    expires_at = (datetime.now(timezone.utc) + timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
+    if period_end:
+        expires_at = f"{period_end} 23:59:59"
+    else:
+        expires_at = (datetime.now(timezone.utc) + timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
     await storage.set_pro_expires_at(user["id"], expires_at)
 
     return {"ok": True, "pro_expires_at": expires_at[:10]}

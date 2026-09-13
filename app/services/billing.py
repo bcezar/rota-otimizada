@@ -127,6 +127,20 @@ async def cancel_subscription(subscription_id: str) -> None:
         r.raise_for_status()
 
 
+_UNPAID_STATUSES = ("PENDING", "AWAITING_RISK_ANALYSIS", "OVERDUE")
+
+
+def current_period_end(payments: list) -> Optional[str]:
+    """
+    Return the due date (YYYY-MM-DD) of the earliest unpaid invoice — i.e. the
+    last day of already-paid Pro access. Asaas advances the subscription's own
+    `nextDueDate` as soon as the next invoice is generated, even before it's
+    paid, so that field can't be trusted for "access until" — this can.
+    """
+    due_dates = [p["dueDate"] for p in payments if p.get("status") in _UNPAID_STATUSES and p.get("dueDate")]
+    return min(due_dates) if due_dates else None
+
+
 async def list_payments(customer_id: str, limit: int = 12) -> list:
     """Return recent payments for a customer, newest first."""
     async with httpx.AsyncClient() as client:
