@@ -883,4 +883,8 @@ def get_strings(locale: str) -> dict:
     from app.config import settings
     base = dict(_STRINGS.get(locale, _STRINGS["pt-BR"]))
     base["geocoding_country"] = settings.geocoding_country
+    if locale != "en-US":
+        # PT billing goes through Asaas at settings.pro_price — keep the label in sync
+        # so a price change never drifts from what's actually charged.
+        base["pro_price_label"] = f"R$ {settings.pro_price:.2f}".replace(".", ",") + "/mês"
     return base
