@@ -565,7 +565,7 @@
       <div class="upgrade-form">
         <div x-show="window.I18N.show_cpf_field">
           <label class="upgrade-label">{{ i18n.upgrade_cpf_label }}</label>
-          <input class="upgrade-input" x-model="upgradeCpf" :placeholder="window.I18N.upgrade_cpf_placeholder" inputmode="numeric" maxlength="18" />
+          <input class="upgrade-input" :value="upgradeCpf" @input="upgradeCpf = formatCpfCnpj($event.target.value)" :placeholder="window.I18N.upgrade_cpf_placeholder" inputmode="numeric" maxlength="18" />
         </div>
         <div class="upgrade-billing-toggle" x-show="window.I18N.show_cpf_field">
           <button class="upgrade-billing-btn" x-show="window.I18N.show_pix"
