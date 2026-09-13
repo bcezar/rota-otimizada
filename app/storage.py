@@ -107,6 +107,22 @@ async def init_db() -> None:
         "(id TEXT PRIMARY KEY, user_id TEXT, email TEXT NOT NULL, message TEXT NOT NULL, "
         "created_at TEXT NOT NULL DEFAULT (datetime('now')))"
     )
+    await _execute(
+        "CREATE TABLE IF NOT EXISTS coupons "
+        "(code TEXT PRIMARY KEY, max_redemptions INTEGER NOT NULL, "
+        "expires_at TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1, "
+        "created_at TEXT NOT NULL DEFAULT (datetime('now')))"
+    )
+    await _execute(
+        "CREATE TABLE IF NOT EXISTS coupon_redemptions "
+        "(code TEXT NOT NULL, user_id TEXT NOT NULL, cpf_cnpj TEXT NOT NULL, "
+        "created_at TEXT NOT NULL DEFAULT (datetime('now')), PRIMARY KEY (code, user_id))"
+    )
+    # seed the launch coupon (idempotent — safe to re-run on every deploy)
+    await _execute(
+        "INSERT OR IGNORE INTO coupons (code, max_redemptions, expires_at) "
+        "VALUES ('ROTAREDDIT', 20, '2026-10-01 02:59:59')"
+    )
     # prune stale + excess geocoding cache entries on every startup
     await _execute(
         "DELETE FROM geocoding_cache WHERE cached_at < datetime('now', '-30 days')"
@@ -566,4 +582,55 @@ async def save_contact_message(user_id: Optional[str], email: str, message: str)
     await _execute(
         "INSERT INTO contact_messages (id, user_id, email, message) VALUES (?, ?, ?, ?)",
         [str(uuid.uuid4()), user_id, email, message],
+    )
+
+
+# ── Coupons ──────────────────────────────────────────────────────────────────
+
+async def get_coupon(code: str) -> Optional[dict]:
+    if not _turso_configured():
+        return None
+    r = await _execute(
+        "SELECT code, max_redemptions, expires_at, active FROM coupons WHERE code = ?",
+        [code],
+    )
+    rows = r.get("rows", [])
+    if not rows:
+        return None
+    row = rows[0]
+    return {
+        "code":            _cell(row[0]),
+        "max_redemptions": int(_cell(row[1])),
+        "expires_at":      _cell(row[2]),
+        "active":          bool(int(_cell(row[3]))),
+    }
+
+
+async def count_coupon_redemptions(code: str) -> int:
+    if not _turso_configured():
+        return 0
+    r = await _execute(
+        "SELECT COUNT(*) FROM coupon_redemptions WHERE code = ?",
+        [code],
+    )
+    rows = r.get("rows", [])
+    return int(_cell(rows[0][0])) if rows else 0
+
+
+async def cpf_has_redeemed_coupon(cpf_cnpj: str) -> bool:
+    if not _turso_configured():
+        return False
+    r = await _execute(
+        "SELECT 1 FROM coupon_redemptions WHERE cpf_cnpj = ? LIMIT 1",
+        [cpf_cnpj],
+    )
+    return len(r.get("rows", [])) > 0
+
+
+async def record_coupon_redemption(code: str, user_id: str, cpf_cnpj: str) -> None:
+    if not _turso_configured():
+        return
+    await _execute(
+        "INSERT INTO coupon_redemptions (code, user_id, cpf_cnpj) VALUES (?, ?, ?)",
+        [code, user_id, cpf_cnpj],
     )

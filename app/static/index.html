@@ -575,6 +575,10 @@
                   :class="{'upgrade-billing-btn-active': upgradeBillingType === 'CREDIT_CARD'}"
                   @click="upgradeBillingType = 'CREDIT_CARD'">{{ i18n.upgrade_card_label }}</button>
         </div>
+        <div x-show="window.I18N.show_cpf_field">
+          <label class="upgrade-label">{{ i18n.upgrade_coupon_label }}</label>
+          <input class="upgrade-input" x-model="upgradeCoupon" :placeholder="window.I18N.upgrade_coupon_placeholder" maxlength="30" style="text-transform:uppercase" />
+        </div>
         <button class="btn-upgrade-confirm" @click="startCheckout()" :disabled="upgradeLoading">
           <span x-show="!upgradeLoading">{{ i18n.upgrade_continue_btn }}</span>
           <span x-show="upgradeLoading">{{ i18n.upgrade_processing_btn }}</span>

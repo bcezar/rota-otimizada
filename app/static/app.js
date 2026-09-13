@@ -89,6 +89,7 @@ function routeApp() {
     upgradeOpen:        false,
     upgradeCpf:         '',
     upgradeBillingType: 'PIX',
+    upgradeCoupon:      '',
     upgradeLoading:     false,
     get stopLimit() { return this.user?.is_pro ? 50 : 5; },
     get anonOptsRemaining() {
@@ -1395,10 +1396,24 @@ tr.sp td{font-weight:bold;background:#eef2ff}
           const res = await fetch('/api/v1/billing/checkout', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this._authToken}` },
-            body: JSON.stringify({ cpf_cnpj: cpf, billing_type: this.upgradeBillingType }),
+            body: JSON.stringify({
+              cpf_cnpj: cpf,
+              billing_type: this.upgradeBillingType,
+              coupon_code: this.upgradeCoupon.trim() || undefined,
+            }),
           });
           const data = await res.json();
-          if (res.ok && data.payment_url) {
+          if (res.ok && data.coupon_applied) {
+            this.upgradeOpen = false;
+            const res2 = await fetch('/api/v1/auth/me', { headers: { Authorization: `Bearer ${this._authToken}` } });
+            if (res2.ok) {
+              const userData = await res2.json();
+              this.user = userData;
+              localStorage.setItem('routeSession', JSON.stringify({ token: this._authToken, user: userData }));
+            }
+            this.notice = window.I18N.notice_welcome_pro;
+            setTimeout(() => { this.notice = ''; }, 6000);
+          } else if (res.ok && data.payment_url) {
             this.upgradeOpen = false;
             window.open(data.payment_url, '_blank');
           } else {

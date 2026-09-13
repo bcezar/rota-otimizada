@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import calendar
 from datetime import date
 from typing import Optional
 
@@ -13,6 +14,13 @@ def _headers() -> dict:
         "access_token": settings.asaas_api_key or "",
         "Content-Type": "application/json",
     }
+
+
+def add_one_month(d: date) -> date:
+    """Same day next month, clamped to the target month's last day (e.g. Jan 31 -> Feb 28)."""
+    year, month = (d.year, d.month + 1) if d.month < 12 else (d.year + 1, 1)
+    last_day = calendar.monthrange(year, month)[1]
+    return d.replace(year=year, month=month, day=min(d.day, last_day))
 
 
 async def get_or_create_customer(
@@ -56,13 +64,18 @@ async def create_subscription(
     user_id: str,
     billing_type: str,
     success_url: str,
+    next_due_date: Optional[str] = None,
 ) -> dict:
     """
     Create a monthly Pro subscription and return the payment URL for the first charge.
     billing_type: 'PIX' | 'CREDIT_CARD'
+
+    `next_due_date` defers the first charge (e.g. a coupon granting a free first
+    month) — when set, there's no invoice to pay yet, so the payment-URL lookup
+    is skipped and `payment_url` comes back None.
     """
     async with httpx.AsyncClient() as client:
-        next_due = date.today().isoformat()
+        next_due = next_due_date or date.today().isoformat()
         r = await client.post(
             f"{settings.asaas_base_url}/subscriptions",
             headers=_headers(),
@@ -80,6 +93,9 @@ async def create_subscription(
         r.raise_for_status()
         sub = r.json()
         sub_id = sub["id"]
+
+        if next_due_date:
+            return {"subscription_id": sub_id, "payment_url": None}
 
         # Fetch the first payment generated for this subscription
         r2 = await client.get(

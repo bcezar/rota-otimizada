@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Body, HTTPException, Request
@@ -16,6 +16,37 @@ router = APIRouter()
 class CheckoutRequest(BaseModel):
     cpf_cnpj: str
     billing_type: Literal["PIX", "CREDIT_CARD"] = "PIX"
+    coupon_code: Optional[str] = None
+
+
+def _check_digit(base: str, weights: "list[int] | range") -> str:
+    total = sum(int(d) * w for d, w in zip(base, weights))
+    remainder = total % 11
+    return "0" if remainder < 2 else str(11 - remainder)
+
+
+def _is_valid_cpf(cpf: str) -> bool:
+    if len(cpf) != 11 or cpf == cpf[0] * 11:
+        return False
+    d1 = _check_digit(cpf[:9], range(10, 1, -1))
+    d2 = _check_digit(cpf[:9] + d1, range(11, 1, -1))
+    return cpf[-2:] == d1 + d2
+
+
+def _is_valid_cnpj(cnpj: str) -> bool:
+    if len(cnpj) != 14 or cnpj == cnpj[0] * 14:
+        return False
+    d1 = _check_digit(cnpj[:12], [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2])
+    d2 = _check_digit(cnpj[:12] + d1, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2])
+    return cnpj[-2:] == d1 + d2
+
+
+def _is_valid_cpf_cnpj(digits: str) -> bool:
+    if len(digits) == 11:
+        return _is_valid_cpf(digits)
+    if len(digits) == 14:
+        return _is_valid_cnpj(digits)
+    return False
 
 
 async def _require_auth(request: Request) -> dict:
@@ -40,8 +71,26 @@ async def checkout(request: Request, body: CheckoutRequest = Body(...)):
         raise HTTPException(status_code=400, detail="Você já possui o Plano Pro.")
 
     cpf_cnpj = body.cpf_cnpj.replace(".", "").replace("-", "").replace("/", "").strip()
-    if len(cpf_cnpj) not in (11, 14):
+    if not _is_valid_cpf_cnpj(cpf_cnpj):
         raise HTTPException(status_code=422, detail="CPF ou CNPJ inválido.")
+
+    coupon_code = (body.coupon_code or "").strip().upper()
+    next_due_date: Optional[str] = None
+    if coupon_code:
+        coupon = await storage.get_coupon(coupon_code)
+        expired = (
+            not coupon
+            or not coupon["active"]
+            or datetime.now(timezone.utc)
+            > datetime.strptime(coupon["expires_at"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+        )
+        if expired:
+            raise HTTPException(status_code=400, detail="Cupom inválido ou expirado.")
+        if await storage.count_coupon_redemptions(coupon_code) >= coupon["max_redemptions"]:
+            raise HTTPException(status_code=400, detail="Cupom esgotado.")
+        if await storage.cpf_has_redeemed_coupon(cpf_cnpj):
+            raise HTTPException(status_code=400, detail="Este CPF/CNPJ já usou um cupom antes.")
+        next_due_date = billing.add_one_month(date.today()).isoformat()
 
     try:
         customer_id = await billing.get_or_create_customer(
@@ -58,9 +107,16 @@ async def checkout(request: Request, body: CheckoutRequest = Body(...)):
             user_id=user["id"],
             billing_type=body.billing_type,
             success_url=success_url,
+            next_due_date=next_due_date,
         )
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Erro ao criar cobrança: {exc}") from exc
+
+    if coupon_code:
+        await storage.set_user_pro(user["id"], True)
+        await storage.set_pro_expires_at(user["id"], None)
+        await storage.record_coupon_redemption(coupon_code, user["id"], cpf_cnpj)
+        return {"ok": True, "coupon_applied": True}
 
     if not result.get("payment_url"):
         raise HTTPException(status_code=502, detail="Não foi possível obter o link de pagamento.")
