@@ -12,9 +12,9 @@ from app.config import settings
 from app.i18n import get_strings
 from app.limiter import limiter
 from app.models import (
-    Coordinates, FeedbackRequest, LoginRequest, LoginResponse, MagicRequestBody, MagicRequestResponse,
-    MapImageRequest, OriginInfo, PolylineRequest, RouteRequest, RouteResponse, RouteStop,
-    SaveRouteRequest, UserResponse,
+    ContactRequest, Coordinates, FeedbackRequest, LoginRequest, LoginResponse, MagicRequestBody,
+    MagicRequestResponse, MapImageRequest, OriginInfo, PolylineRequest, RouteRequest, RouteResponse,
+    RouteStop, SaveRouteRequest, UserResponse,
 )
 from app.services import directions, distance, geocoding, optimizer, static_maps
 
@@ -105,6 +105,31 @@ async def _send_magic_email(to_email: str, magic_token: str) -> None:
         logger.info("magic link email sent to %s", to_email)
     except Exception as exc:
         logger.error("failed to send magic link email to %s: %s", to_email, exc)
+
+
+async def _send_contact_notification_email(from_email: str, message: str) -> None:
+    if not settings.resend_api_key or not settings.contact_notify_email:
+        logger.warning("Resend or CONTACT_NOTIFY_EMAIL not set — contact notification email skipped")
+        return
+    try:
+        import resend
+        resend.api_key = settings.resend_api_key
+        resend.Emails.send({
+            "from": f"{settings.brand_name} <{settings.resend_from_email}>",
+            "to": [settings.contact_notify_email],
+            "reply_to": from_email,
+            "subject": f"Nova mensagem de contato — {from_email}",
+            "html": f"""
+            <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:2rem">
+              <h2 style="color:#111;margin:0 0 .5rem">Nova mensagem de contato</h2>
+              <p style="color:#6b7280;margin:0 0 .5rem"><strong>De:</strong> {from_email}</p>
+              <p style="color:#374151;white-space:pre-wrap">{message}</p>
+            </div>
+            """,
+        })
+        logger.info("contact notification email sent for %s", from_email)
+    except Exception as exc:
+        logger.error("failed to send contact notification email for %s: %s", from_email, exc)
 
 
 @router.post("/auth/magic-request", response_model=MagicRequestResponse)
@@ -325,6 +350,20 @@ async def submit_feedback(request: Request, body: FeedbackRequest = Body(...)):
         body.rating,
         body.comment,
     )
+    return {"ok": True}
+
+
+@router.post("/contact")
+@limiter.limit("5/minute")
+async def submit_contact(request: Request, body: ContactRequest = Body(...)):
+    token = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
+    current_user = await storage.get_user_by_token(token) if token else None
+    await storage.save_contact_message(
+        current_user["id"] if current_user else None,
+        body.email,
+        body.message,
+    )
+    await _send_contact_notification_email(body.email, body.message)
     return {"ok": True}
 
 

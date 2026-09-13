@@ -166,6 +166,16 @@ _SEO_PAGES_PT: dict[str, dict[str, str]] = {
         "description": "Tire suas dúvidas sobre o Rota Otimizada: como otimizar rotas, importar endereços, usar com Google Maps e Waze, e muito mais.",
         "template": "perguntas-frequentes.html",
     },
+    "termos-de-uso": {
+        "title": "Termos de Uso — Rota Otimizada",
+        "description": "Termos de uso do Rota Otimizada: planos, cobrança, cancelamento e responsabilidades.",
+        "template": "termos-de-uso.html",
+    },
+    "privacidade": {
+        "title": "Política de Privacidade — Rota Otimizada",
+        "description": "Como o Rota Otimizada coleta, usa e protege seus dados pessoais.",
+        "template": "privacidade.html",
+    },
 }
 
 _SEO_PAGES_EN: dict[str, dict[str, str]] = {
@@ -203,6 +213,16 @@ _SEO_PAGES_EN: dict[str, dict[str, str]] = {
         "title": "Frequently Asked Questions — Find My Route",
         "description": "Get answers about Find My Route: how to optimize routes, import addresses, use with Google Maps and Waze, and much more.",
         "template": "faq.html",
+    },
+    "terms-of-service": {
+        "title": "Terms of Service — Find My Route",
+        "description": "Find My Route's terms of service: plans, billing, cancellation, and responsibilities.",
+        "template": "terms-of-service.html",
+    },
+    "privacy-policy": {
+        "title": "Privacy Policy — Find My Route",
+        "description": "How Find My Route collects, uses, and protects your personal data.",
+        "template": "privacy-policy.html",
     },
 }
 

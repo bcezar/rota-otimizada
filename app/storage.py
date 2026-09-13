@@ -102,6 +102,11 @@ async def init_db() -> None:
         "(id TEXT PRIMARY KEY, user_id TEXT, signup_source TEXT, rating INTEGER NOT NULL, "
         "comment TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')))"
     )
+    await _execute(
+        "CREATE TABLE IF NOT EXISTS contact_messages "
+        "(id TEXT PRIMARY KEY, user_id TEXT, email TEXT NOT NULL, message TEXT NOT NULL, "
+        "created_at TEXT NOT NULL DEFAULT (datetime('now')))"
+    )
     # prune stale + excess geocoding cache entries on every startup
     await _execute(
         "DELETE FROM geocoding_cache WHERE cached_at < datetime('now', '-30 days')"
@@ -550,4 +555,15 @@ async def save_feedback(user_id: Optional[str], rating: int, comment: Optional[s
     await _execute(
         "INSERT INTO feedback (id, user_id, signup_source, rating, comment) VALUES (?, ?, ?, ?, ?)",
         [str(uuid.uuid4()), user_id, _SIGNUP_SOURCE, rating, comment],
+    )
+
+
+# ── Contact messages ─────────────────────────────────────────────────────────
+
+async def save_contact_message(user_id: Optional[str], email: str, message: str) -> None:
+    if not _turso_configured():
+        return
+    await _execute(
+        "INSERT INTO contact_messages (id, user_id, email, message) VALUES (?, ?, ?, ?)",
+        [str(uuid.uuid4()), user_id, email, message],
     )

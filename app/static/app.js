@@ -39,6 +39,12 @@ function routeApp() {
     feedbackComment:    '',
     feedbackSubmitting: false,
     feedbackDone:       false,
+    contactOpen:        false,
+    contactEmail:       '',
+    contactMessage:     '',
+    contactSubmitting:  false,
+    contactDone:        false,
+    contactError:       '',
     geolocating:    false,
     copied:         false,
     shared:         false,
@@ -189,6 +195,11 @@ function routeApp() {
         }
         this.notice = window.I18N.notice_welcome_pro;
         setTimeout(() => { this.notice = ''; }, 6000);
+      }
+
+      if (params.get('contact') === '1') {
+        history.replaceState(null, '', location.pathname);
+        this.openContact();
       }
 
       if (urlSaved) {
@@ -1269,6 +1280,45 @@ tr.sp td{font-weight:bold;background:#eef2ff}
     dismissFeedback() {
       localStorage.setItem('feedbackDismissed', 'true');
       this.feedbackOpen = false;
+    },
+
+    openContact() {
+      if (this.user) this.contactEmail = this.user.email;
+      this.contactOpen = true;
+    },
+
+    closeContact() {
+      this.contactOpen = false;
+    },
+
+    async submitContact() {
+      if (!this.contactEmail.trim() || !this.contactMessage.trim()) return;
+      this.contactSubmitting = true;
+      this.contactError = '';
+      try {
+        const headers = { 'Content-Type': 'application/json' };
+        if (this._authToken) headers['Authorization'] = `Bearer ${this._authToken}`;
+        const res = await fetch('/api/v1/contact', {
+          method:  'POST',
+          headers,
+          body: JSON.stringify({
+            email:   this.contactEmail.trim(),
+            message: this.contactMessage.trim(),
+          }),
+        });
+        if (!res.ok) throw new Error('contact request failed');
+        this._track('contact_submitted', {});
+        this.contactDone = true;
+        setTimeout(() => {
+          this.contactOpen = false;
+          this.contactDone = false;
+          this.contactMessage = '';
+        }, 1800);
+      } catch (e) {
+        this.contactError = window.I18N.err_api_connection;
+      } finally {
+        this.contactSubmitting = false;
+      }
     },
 
     async optimize() {

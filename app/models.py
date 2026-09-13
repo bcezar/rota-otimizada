@@ -88,3 +88,8 @@ class MagicRequestResponse(BaseModel):
 class FeedbackRequest(BaseModel):
     rating: int = Field(..., ge=1, le=5)
     comment: Optional[str] = Field(None, max_length=1000)
+
+
+class ContactRequest(BaseModel):
+    email: str = Field(..., min_length=3, max_length=200)
+    message: str = Field(..., min_length=1, max_length=2000)

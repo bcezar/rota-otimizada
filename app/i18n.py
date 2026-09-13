@@ -341,6 +341,7 @@ _STRINGS: dict[str, dict] = {
         "drawer_settings":  "Configurações",
         "drawer_account":   "Minha conta",
         "drawer_help":      "Ajuda",
+        "drawer_contact":   "Fale conosco",
         "drawer_signout":   "Sair",
         "drawer_signin":    "Entrar",
 
@@ -368,6 +369,22 @@ _STRINGS: dict[str, dict] = {
         "footer_google_maps_href": "/google-maps-multiplos-enderecos",
         "footer_faq":       "Perguntas frequentes",
         "footer_faq_href":  "/perguntas-frequentes",
+        "footer_terms":     "Termos de Uso",
+        "footer_terms_href": "/termos-de-uso",
+        "footer_privacy":   "Privacidade",
+        "footer_privacy_href": "/privacidade",
+        "footer_instagram": "Instagram",
+        "footer_instagram_href": "https://instagram.com/rota.otimizada",
+
+        # Contact modal
+        "contact_title":       "Fale conosco",
+        "contact_subtitle":    "Dúvida, sugestão ou problema? Manda pra gente.",
+        "contact_email_placeholder": "seu@email.com",
+        "contact_message_placeholder": "Como podemos ajudar?",
+        "contact_submit_btn":  "Enviar mensagem",
+        "contact_sending_btn": "Enviando…",
+        "contact_thanks":      "Mensagem enviada! Vamos responder em breve.",
+        "contact_instagram_note": "Prefere falar direto? @rota.otimizada no Instagram",
 
         # conta.html
         "account_page_title":          "Minha Conta",
@@ -761,6 +778,7 @@ _STRINGS: dict[str, dict] = {
         "drawer_settings":  "Settings",
         "drawer_account":   "My account",
         "drawer_help":      "Help",
+        "drawer_contact":   "Contact us",
         "drawer_signout":   "Sign out",
         "drawer_signin":    "Sign in",
 
@@ -788,6 +806,22 @@ _STRINGS: dict[str, dict] = {
         "footer_google_maps_href": "/google-maps-multiple-addresses",
         "footer_faq":       "Frequently asked questions",
         "footer_faq_href":  "/faq",
+        "footer_terms":     "Terms of Service",
+        "footer_terms_href": "/terms-of-service",
+        "footer_privacy":   "Privacy",
+        "footer_privacy_href": "/privacy-policy",
+        "footer_instagram": "Instagram",
+        "footer_instagram_href": "https://instagram.com/rota.otimizada",
+
+        # Contact modal
+        "contact_title":       "Contact us",
+        "contact_subtitle":    "Question, suggestion, or issue? Send it our way.",
+        "contact_email_placeholder": "you@email.com",
+        "contact_message_placeholder": "How can we help?",
+        "contact_submit_btn":  "Send message",
+        "contact_sending_btn": "Sending…",
+        "contact_thanks":      "Message sent! We'll get back to you soon.",
+        "contact_instagram_note": "Prefer to reach out directly? @rota.otimizada on Instagram",
 
         # conta.html
         "account_page_title":          "My Account",
