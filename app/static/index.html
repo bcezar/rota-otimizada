@@ -578,6 +578,7 @@
         <div x-show="window.I18N.show_cpf_field">
           <label class="upgrade-label">{{ i18n.upgrade_coupon_label }}</label>
           <input class="upgrade-input" x-model="upgradeCoupon" :placeholder="window.I18N.upgrade_coupon_placeholder" maxlength="30" style="text-transform:uppercase" />
+          <p class="upgrade-coupon-hint" x-show="upgradeCoupon.trim()">{{ i18n.upgrade_coupon_email_hint }}</p>
         </div>
         <button class="btn-upgrade-confirm" @click="startCheckout()" :disabled="upgradeLoading">
           <span x-show="!upgradeLoading">{{ i18n.upgrade_continue_btn }}</span>

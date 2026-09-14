@@ -303,6 +303,7 @@ _STRINGS: dict[str, dict] = {
         "upgrade_card_label": "Cartão",
         "upgrade_coupon_label": "Cupom de desconto (opcional)",
         "upgrade_coupon_placeholder": "Código do cupom",
+        "upgrade_coupon_email_hint": "Você pode receber um e-mail do Asaas sobre a próxima cobrança — ela só será feita depois do primeiro mês grátis.",
         "upgrade_continue_btn": "Continuar para pagamento",
         "upgrade_processing_btn": "Aguarde…",
         "upgrade_footer_note": "Pagamento processado pelo Asaas. Cancele quando quiser.",
@@ -440,6 +441,16 @@ _STRINGS: dict[str, dict] = {
         "email_body":       "Clique no botão abaixo para entrar. O link expira em <strong>15 minutos</strong>.",
         "email_cta":        "Entrar no Rota Otimizada",
         "email_footer":     "Se você não solicitou este link, ignore este e-mail.",
+
+        # email (welcome to Pro/Exclusive)
+        "welcome_email_subject_pro":       "Bem-vindo ao Plano Pro! 🎉",
+        "welcome_email_heading_pro":       "Você agora é Pro!",
+        "welcome_email_body_pro":          "Sua assinatura foi confirmada. Você já pode otimizar rotas com até <strong>50 paradas</strong> e otimizações ilimitadas.",
+        "welcome_email_subject_exclusive": "Bem-vindo ao Plano Exclusive! 🎉",
+        "welcome_email_heading_exclusive": "Você agora é Exclusive!",
+        "welcome_email_body_exclusive":    "Seu cupom foi aplicado. Durante o primeiro mês você pode otimizar rotas com até <strong>100 paradas</strong> e otimizações ilimitadas.",
+        "welcome_email_cta":               "Ir para o Rota Otimizada",
+        "welcome_email_footer":            "Dúvidas? É só responder este e-mail ou usar a seção 'Fale conosco' no app.",
 
         # HTTP errors
         "err_auth_required":  "Autenticação necessária.",
@@ -746,6 +757,7 @@ _STRINGS: dict[str, dict] = {
         "upgrade_card_label": "Card",
         "upgrade_coupon_label": "Discount coupon (optional)",
         "upgrade_coupon_placeholder": "Coupon code",
+        "upgrade_coupon_email_hint": "You may receive an email about the upcoming charge — it will only be processed after the free first month.",
         "upgrade_continue_btn": "Subscribe – $6/month",
         "upgrade_processing_btn": "Please wait…",
         "upgrade_footer_note": "Secure payment via Stripe. Cancel anytime.",
@@ -883,6 +895,16 @@ _STRINGS: dict[str, dict] = {
         "email_body":       "Click the button below to sign in. The link expires in <strong>15 minutes</strong>.",
         "email_cta":        "Sign in to Find My Route",
         "email_footer":     "If you didn't request this link, you can safely ignore this email.",
+
+        # email (welcome to Pro/Exclusive)
+        "welcome_email_subject_pro":       "Welcome to the Pro Plan! 🎉",
+        "welcome_email_heading_pro":       "You're now Pro!",
+        "welcome_email_body_pro":          "Your subscription is confirmed. You can now optimize routes with up to <strong>50 stops</strong> and unlimited optimizations.",
+        "welcome_email_subject_exclusive": "Welcome to the Exclusive Plan! 🎉",
+        "welcome_email_heading_exclusive": "You're now Exclusive!",
+        "welcome_email_body_exclusive":    "Your coupon has been applied. During your first month you can optimize routes with up to <strong>100 stops</strong> and unlimited optimizations.",
+        "welcome_email_cta":               "Go to Find My Route",
+        "welcome_email_footer":            "Questions? Just reply to this email or use the 'Contact us' section in the app.",
 
         # HTTP errors
         "err_auth_required":  "Authentication required.",

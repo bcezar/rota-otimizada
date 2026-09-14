@@ -1,3 +1,4 @@
+import logging
 from datetime import date, datetime, timedelta, timezone
 from typing import Literal, Optional
 
@@ -6,11 +7,52 @@ from pydantic import BaseModel
 
 from app import storage
 from app.config import settings
+from app.i18n import get_strings
 from app.limiter import limiter
 from app.services import billing
 from app.services import stripe_billing
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
+
+
+async def _send_welcome_email(to_email: str, tier: str) -> None:
+    """tier: 'pro' or 'exclusive'. Fire-and-forget — never blocks the caller on failure."""
+    if not settings.resend_api_key:
+        logger.warning("RESEND_API_KEY not set — welcome email skipped for %s", to_email)
+        return
+    s = get_strings(settings.locale)
+    try:
+        import resend
+        resend.api_key = settings.resend_api_key
+        resend.Emails.send({
+            "from": f"{s['email_from_name']} <{settings.resend_from_email}>",
+            "to": [to_email],
+            "subject": s[f"welcome_email_subject_{tier}"],
+            "html": f"""
+            <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:2rem">
+              <img src="{settings.app_base_url}/{s['logo']}"
+                   width="40" style="border-radius:10px;margin-bottom:1.5rem" />
+              <h2 style="color:#111;margin:0 0 .5rem">{s[f'welcome_email_heading_{tier}']}</h2>
+              <p style="color:#6b7280;margin:0 0 1.5rem">
+                {s[f'welcome_email_body_{tier}']}
+              </p>
+              <a href="{settings.app_base_url}/"
+                 style="display:inline-block;background:#1d4ed8;color:#fff;
+                        padding:.8rem 1.5rem;border-radius:10px;text-decoration:none;
+                        font-weight:700;font-size:1rem">
+                {s['welcome_email_cta']}
+              </a>
+              <p style="color:#9ca3af;font-size:.8rem;margin-top:2rem">
+                {s['welcome_email_footer']}
+              </p>
+            </div>
+            """,
+        })
+        logger.info("welcome email (%s) sent to %s", tier, to_email)
+    except Exception as exc:
+        logger.error("failed to send welcome email to %s: %s", to_email, exc)
 
 
 class CheckoutRequest(BaseModel):
@@ -115,9 +157,11 @@ async def checkout(request: Request, body: CheckoutRequest = Body(...)):
     if coupon_code:
         await storage.set_user_pro(user["id"], True)
         await storage.set_pro_expires_at(user["id"], None)
-        if coupon.get("grants_stop_limit") is not None:
+        is_exclusive = coupon.get("grants_stop_limit") is not None
+        if is_exclusive:
             await storage.set_exclusive_until(user["id"], f"{next_due_date} 23:59:59")
         await storage.record_coupon_redemption(coupon_code, user["id"], cpf_cnpj)
+        await _send_welcome_email(user["email"], "exclusive" if is_exclusive else "pro")
         return {"ok": True, "coupon_applied": True}
 
     if not result.get("payment_url"):
@@ -285,6 +329,9 @@ async def stripe_webhook(request: Request):
             await storage.set_pro_expires_at(user_id, None)
             if stripe_customer:
                 await storage.set_stripe_customer_id(user_id, stripe_customer)
+            user = await storage.get_user_by_stripe_customer(stripe_customer) if stripe_customer else None
+            if user:
+                await _send_welcome_email(user["email"], "pro")
 
     elif event_type == "customer.subscription.deleted":
         stripe_customer = data_obj.get("customer")
@@ -327,8 +374,16 @@ async def billing_webhook(request: Request):
         return {"ok": True}
 
     if event in ("PAYMENT_RECEIVED", "PAYMENT_CONFIRMED"):
+        customer_id = entity.get("customer")
+        was_pro = False
+        user_for_email = None
+        if customer_id:
+            user_for_email = await storage.get_user_by_asaas_customer(customer_id)
+            was_pro = bool(user_for_email and user_for_email.get("is_pro"))
         await storage.set_user_pro(user_id, True)
         await storage.set_pro_expires_at(user_id, None)  # renewed — no expiry
+        if not was_pro and user_for_email:
+            await _send_welcome_email(user_for_email["email"], "pro")
     elif event == "PAYMENT_OVERDUE":
         # grace period before downgrading — gives the user time to pay the PIX invoice
         expires_at = (

@@ -1020,6 +1020,7 @@ input[type="text"]:disabled { background: #f9fafb; color: #9ca3af; cursor: defau
 .btn-upgrade-confirm:hover:not(:disabled) { background: #6d28d9; }
 .btn-upgrade-confirm:disabled { background: #c4b5fd; cursor: default; }
 .upgrade-footer { font-size: .75rem; color: #9ca3af; text-align: center; margin: 0; }
+.upgrade-coupon-hint { font-size: .75rem; color: #9ca3af; margin-top: .35rem; line-height: 1.4; }
 
 /* === HOW-TO CARD === */
 .how-to-card {
