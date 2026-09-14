@@ -118,10 +118,16 @@ async def init_db() -> None:
         "(code TEXT NOT NULL, user_id TEXT NOT NULL, cpf_cnpj TEXT NOT NULL, "
         "created_at TEXT NOT NULL DEFAULT (datetime('now')), PRIMARY KEY (code, user_id))"
     )
-    # seed the launch coupon (idempotent — safe to re-run on every deploy)
+    # grants_stop_limit must exist before the seed inserts below reference it
+    await _execute("ALTER TABLE coupons ADD COLUMN grants_stop_limit INTEGER", ignore_error=True)
+    # seed the launch coupons (idempotent — safe to re-run on every deploy)
     await _execute(
         "INSERT OR IGNORE INTO coupons (code, max_redemptions, expires_at) "
         "VALUES ('ROTAREDDIT', 20, '2026-10-01 02:59:59')"
+    )
+    await _execute(
+        "INSERT OR IGNORE INTO coupons (code, max_redemptions, expires_at, grants_stop_limit) "
+        "VALUES ('ROTAEXCLUSIVE', 10, '2026-10-01 02:59:59', 100)"
     )
     # prune stale + excess geocoding cache entries on every startup
     await _execute(
@@ -143,6 +149,7 @@ async def init_db() -> None:
     await _execute("ALTER TABLE users ADD COLUMN pro_expires_at TEXT", ignore_error=True)
     await _execute("ALTER TABLE users ADD COLUMN stripe_customer_id TEXT", ignore_error=True)
     await _execute("ALTER TABLE users ADD COLUMN signup_source TEXT", ignore_error=True)
+    await _execute("ALTER TABLE users ADD COLUMN exclusive_until TEXT", ignore_error=True)
 
 
 # ── Short links ─────────────────────────────────────────────────────────────
@@ -249,6 +256,8 @@ def _row_to_user(row: list) -> dict:
         "picture_url":      _cell(row[5]) if len(row) > 5 else None,
         "asaas_customer_id": _cell(row[6]) if len(row) > 6 else None,
         "stripe_customer_id": _cell(row[7]) if len(row) > 7 else None,
+        "is_exclusive":    bool(_int(_cell(row[8]))) if len(row) > 8 else False,
+        "exclusive_until": _cell(row[9]) if len(row) > 9 else None,
     }
 
 
@@ -347,7 +356,9 @@ async def get_user_by_token(token: str) -> dict | None:
         r = await _execute(
             "SELECT u.id, u.email, "
             "CASE WHEN u.is_pro = 1 AND (u.pro_expires_at IS NULL OR u.pro_expires_at > datetime('now')) THEN 1 ELSE 0 END AS is_pro, "
-            "u.email_verified, u.name, u.picture_url, u.asaas_customer_id, u.stripe_customer_id "
+            "u.email_verified, u.name, u.picture_url, u.asaas_customer_id, u.stripe_customer_id, "
+            "CASE WHEN u.exclusive_until IS NOT NULL AND u.exclusive_until > datetime('now') THEN 1 ELSE 0 END AS is_exclusive, "
+            "u.exclusive_until "
             "FROM sessions s JOIN users u ON s.user_id = u.id "
             "WHERE s.token = ? AND (s.expires_at IS NULL OR s.expires_at > datetime('now'))",
             [token],
@@ -471,6 +482,16 @@ async def set_pro_expires_at(user_id: str, expires_at: Optional[str]) -> None:
         _users[user_id]["pro_expires_at"] = expires_at
 
 
+async def set_exclusive_until(user_id: str, until: Optional[str]) -> None:
+    if _turso_configured():
+        await _execute(
+            "UPDATE users SET exclusive_until = ? WHERE id = ?",
+            [until, user_id],
+        )
+    elif user_id in _users:
+        _users[user_id]["exclusive_until"] = until
+
+
 async def set_asaas_customer_id(user_id: str, customer_id: str) -> None:
     if _turso_configured():
         await _execute(
@@ -591,18 +612,20 @@ async def get_coupon(code: str) -> Optional[dict]:
     if not _turso_configured():
         return None
     r = await _execute(
-        "SELECT code, max_redemptions, expires_at, active FROM coupons WHERE code = ?",
+        "SELECT code, max_redemptions, expires_at, active, grants_stop_limit FROM coupons WHERE code = ?",
         [code],
     )
     rows = r.get("rows", [])
     if not rows:
         return None
     row = rows[0]
+    grants_stop_limit = _cell(row[4])
     return {
-        "code":            _cell(row[0]),
-        "max_redemptions": int(_cell(row[1])),
-        "expires_at":      _cell(row[2]),
-        "active":          bool(int(_cell(row[3]))),
+        "code":               _cell(row[0]),
+        "max_redemptions":    int(_cell(row[1])),
+        "expires_at":         _cell(row[2]),
+        "active":             bool(int(_cell(row[3]))),
+        "grants_stop_limit":  int(grants_stop_limit) if grants_stop_limit is not None else None,
     }
 
 

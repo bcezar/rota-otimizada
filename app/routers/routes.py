@@ -29,6 +29,8 @@ def _user_response(user: dict) -> dict:
         "email_verified": user.get("email_verified", False),
         "name":           user.get("name"),
         "picture_url":    user.get("picture_url"),
+        "is_exclusive":     user.get("is_exclusive", False),
+        "exclusive_until":  user.get("exclusive_until"),
     }
 
 
@@ -376,8 +378,9 @@ async def reverse_geocode(request: Request, lat: float = QueryParam(...), lng: f
     return {"address": address}
 
 
-_FREE_STOP_LIMIT = 5
-_PRO_STOP_LIMIT  = 50
+_FREE_STOP_LIMIT      = 5
+_PRO_STOP_LIMIT       = 50
+_EXCLUSIVE_STOP_LIMIT = 100
 
 
 @router.post("/routes/optimize", response_model=RouteResponse)
@@ -387,7 +390,10 @@ async def optimize_route(request: Request, body: RouteRequest = Body(...)):
     token = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
     current_user = await storage.get_user_by_token(token) if token else None
     is_pro = bool(current_user.get("is_pro", False)) if current_user else False
-    stop_limit = _PRO_STOP_LIMIT if is_pro else _FREE_STOP_LIMIT
+    is_exclusive = bool(current_user.get("is_exclusive", False)) if current_user else False
+    stop_limit = (
+        _EXCLUSIVE_STOP_LIMIT if is_exclusive else _PRO_STOP_LIMIT if is_pro else _FREE_STOP_LIMIT
+    )
     if len(body.addresses) > stop_limit:
         raise HTTPException(
             status_code=403,

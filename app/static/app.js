@@ -91,7 +91,7 @@ function routeApp() {
     upgradeBillingType: 'PIX',
     upgradeCoupon:      '',
     upgradeLoading:     false,
-    get stopLimit() { return this.user?.is_pro ? 50 : 5; },
+    get stopLimit() { return this.user?.is_exclusive ? 100 : this.user?.is_pro ? 50 : 5; },
     get anonOptsRemaining() {
       if (this.user) return Infinity;
       return Math.max(0, 5 - this.anonOptCount);

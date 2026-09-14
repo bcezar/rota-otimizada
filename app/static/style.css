@@ -1448,6 +1448,7 @@ input[type="text"]:disabled { background: #f9fafb; color: #9ca3af; cursor: defau
 }
 .conta-badge-pro  { background: #f5f3ff; color: #7c3aed; }
 .conta-badge-free { background: #f3f4f6; color: #6b7280; }
+.conta-badge-exclusive { background: #fef3c7; color: #92400e; }
 .conta-section-title { font-size: .8rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .06em; margin-bottom: .85rem; }
 .conta-sub-row {
   display: flex; justify-content: space-between; align-items: center;
@@ -1500,6 +1501,13 @@ input[type="text"]:disabled { background: #f9fafb; color: #9ca3af; cursor: defau
   display: inline-block;
   font-size: .7rem; font-weight: 600;
   background: #ede9fe; color: #6d28d9;
+  padding: .1rem .45rem; border-radius: 999px;
+  margin-left: .4rem; vertical-align: middle;
+}
+.pill-exclusive {
+  display: inline-block;
+  font-size: .7rem; font-weight: 600;
+  background: #fef3c7; color: #92400e;
   padding: .1rem .45rem; border-radius: 999px;
   margin-left: .4rem; vertical-align: middle;
 }

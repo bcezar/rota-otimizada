@@ -115,6 +115,8 @@ async def checkout(request: Request, body: CheckoutRequest = Body(...)):
     if coupon_code:
         await storage.set_user_pro(user["id"], True)
         await storage.set_pro_expires_at(user["id"], None)
+        if coupon.get("grants_stop_limit") is not None:
+            await storage.set_exclusive_until(user["id"], f"{next_due_date} 23:59:59")
         await storage.record_coupon_redemption(coupon_code, user["id"], cpf_cnpj)
         return {"ok": True, "coupon_applied": True}
 
@@ -158,10 +160,12 @@ async def account(request: Request):
 
     return {
         "user": {
-            "id":             user["id"],
-            "email":          user["email"],
-            "name":           user.get("name"),
-            "is_pro":         user.get("is_pro", False),
+            "id":               user["id"],
+            "email":            user["email"],
+            "name":             user.get("name"),
+            "is_pro":           user.get("is_pro", False),
+            "is_exclusive":     user.get("is_exclusive", False),
+            "exclusive_until":  user.get("exclusive_until"),
         },
         "subscription": subscription,
         "payments":     payments,

@@ -54,8 +54,9 @@
               <div class="conta-user-name" x-text="user?.name || user?.email"></div>
               <div class="conta-user-email" x-show="user?.name" x-text="user?.email"></div>
             </div>
-            <div class="conta-badge" :class="user?.is_pro ? 'conta-badge-pro' : 'conta-badge-free'"
-                 x-text="user?.is_pro ? 'Pro' : 'Free'"></div>
+            <div class="conta-badge"
+                 :class="user?.is_exclusive ? 'conta-badge-exclusive' : user?.is_pro ? 'conta-badge-pro' : 'conta-badge-free'"
+                 x-text="user?.is_exclusive ? 'Exclusive' : user?.is_pro ? 'Pro' : 'Free'"></div>
           </div>
         </div>
 
@@ -71,6 +72,7 @@
                 <span class="conta-sub-value">
                   <span class="payment-status payment-status-received">{{ i18n.account_status_active }}</span>
                   <span class="pill-auto-renew" x-text="window.I18N.account_renews_pill + ' ' + formatShortDate(subscription.nextDueDate)"></span>
+                  <span class="pill-exclusive" x-show="user?.is_exclusive" x-text="window.I18N.account_exclusive_until_pill + ' ' + formatShortDate(user.exclusive_until)"></span>
                 </span>
               </div>
               <div class="conta-sub-row">

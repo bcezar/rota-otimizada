@@ -8,7 +8,9 @@ Address = Annotated[str, Field(min_length=1, max_length=200)]
 
 
 class RouteRequest(BaseModel):
-    addresses: list[Address] = Field(..., min_length=2, max_length=50)
+    # 100 is the ceiling for the highest tier (Exclusive) — per-plan limits
+    # (free/Pro/Exclusive) are enforced in the route handler, not here.
+    addresses: list[Address] = Field(..., min_length=2, max_length=100)
     origin: Optional[Address] = None
     destination: Optional[Address] = None
     fixed_first: Optional[Address] = None
@@ -70,6 +72,8 @@ class UserResponse(BaseModel):
     email_verified: bool = False
     name: Optional[str] = None
     picture_url: Optional[str] = None
+    is_exclusive: bool = False
+    exclusive_until: Optional[str] = None
 
 
 class LoginResponse(BaseModel):
