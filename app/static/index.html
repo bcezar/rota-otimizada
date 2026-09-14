@@ -819,7 +819,7 @@
             <div>
               <div class="user-menu-profile">
                 <div class="user-menu-name" x-text="user.name || user.email"></div>
-                <div class="user-menu-plan" x-text="window.I18N.user_plan_prefix + (user.is_pro ? 'Pro' : 'Free')"></div>
+                <div class="user-menu-plan" x-text="window.I18N.user_plan_prefix + (user.is_exclusive ? 'Exclusive' : user.is_pro ? 'Pro' : 'Free')"></div>
               </div>
               <div class="user-menu-divider"></div>
               <a href="/conta" class="user-menu-item" style="text-decoration:none">{{ i18n.user_account_link }}</a>
@@ -829,7 +829,13 @@
                   <span class="user-menu-soon">{{ i18n.user_upgrade_desc }}</span>
                 </button>
               </template>
-              <template x-if="user.is_pro">
+              <template x-if="user.is_pro && user.is_exclusive">
+                <button class="user-menu-item user-menu-item-disabled">
+                  {{ i18n.user_exclusive_active }}
+                  <span class="user-menu-soon">{{ i18n.user_exclusive_desc }}</span>
+                </button>
+              </template>
+              <template x-if="user.is_pro && !user.is_exclusive">
                 <button class="user-menu-item user-menu-item-disabled">
                   {{ i18n.user_pro_active }}
                   <span class="user-menu-soon">{{ i18n.user_pro_desc }}</span>

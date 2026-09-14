@@ -318,6 +318,7 @@ _STRINGS: dict[str, dict] = {
 
         # Notices / errors (runtime)
         "notice_welcome_pro":   "Bem-vindo ao Plano Pro! Agora você tem até 50 paradas.",
+        "notice_welcome_exclusive": "Bem-vindo ao Plano Exclusive! Agora você tem até 100 paradas.",
         "notice_link_expired":  "Este link expirou. Os roteiros compartilhados ficam disponíveis apenas enquanto o servidor estiver ativo. Crie uma nova rota abaixo.",
         "notice_route_loaded":  "Rota \"{name}\" carregada.",
         "notice_route_deleted": "Rota excluída.",
@@ -354,6 +355,8 @@ _STRINGS: dict[str, dict] = {
         "user_upgrade_desc": "até 50 paradas + otimizações ilimitadas",
         "user_pro_active":  "Plano Pro ativo",
         "user_pro_desc":    "50 paradas + otimizações ilimitadas",
+        "user_exclusive_active": "Plano Exclusive ativo",
+        "user_exclusive_desc":   "100 paradas + otimizações ilimitadas",
         "user_signout":     "Sair",
         "user_signin":      "Entrar",
         "user_profile_aria": "Perfil do usuário",
@@ -758,6 +761,7 @@ _STRINGS: dict[str, dict] = {
 
         # Notices / errors (runtime)
         "notice_welcome_pro":   "Welcome to the Pro Plan! You now have up to 50 stops.",
+        "notice_welcome_exclusive": "Welcome to the Exclusive Plan! You now have up to 100 stops.",
         "notice_link_expired":  "This link has expired. Shared routes are only available while the server is active. Create a new route below.",
         "notice_route_loaded":  "Route \"{name}\" loaded.",
         "notice_route_deleted": "Route deleted.",
@@ -794,6 +798,8 @@ _STRINGS: dict[str, dict] = {
         "user_upgrade_desc": "up to 50 stops + unlimited optimizations",
         "user_pro_active":  "Pro plan active",
         "user_pro_desc":    "50 stops + unlimited optimizations",
+        "user_exclusive_active": "Exclusive plan active",
+        "user_exclusive_desc":   "100 stops + unlimited optimizations",
         "user_signout":     "Sign out",
         "user_signin":      "Sign in",
         "user_profile_aria": "User profile",

@@ -1420,13 +1420,14 @@ tr.sp td{font-weight:bold;background:#eef2ff}
           const data = await res.json();
           if (res.ok && data.coupon_applied) {
             this.upgradeOpen = false;
+            let userData = null;
             const res2 = await fetch('/api/v1/auth/me', { headers: { Authorization: `Bearer ${this._authToken}` } });
             if (res2.ok) {
-              const userData = await res2.json();
+              userData = await res2.json();
               this.user = userData;
               localStorage.setItem('routeSession', JSON.stringify({ token: this._authToken, user: userData }));
             }
-            this.notice = window.I18N.notice_welcome_pro;
+            this.notice = userData?.is_exclusive ? window.I18N.notice_welcome_exclusive : window.I18N.notice_welcome_pro;
             setTimeout(() => { this.notice = ''; }, 6000);
           } else if (res.ok && data.payment_url) {
             this.upgradeOpen = false;
