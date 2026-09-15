@@ -386,6 +386,7 @@ _EXCLUSIVE_STOP_LIMIT = 100
 @router.post("/routes/optimize", response_model=RouteResponse)
 @limiter.limit("20/minute")
 async def optimize_route(request: Request, body: RouteRequest = Body(...)):
+    s = get_strings(settings.locale)
     # Enforce per-plan stop limit (auth is optional — anon users have no token)
     token = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
     current_user = await storage.get_user_by_token(token) if token else None
@@ -413,17 +414,17 @@ async def optimize_route(request: Request, body: RouteRequest = Body(...)):
     resolved, failures = await geocoding.geocode_all(to_geocode)
 
     if body.origin and body.origin not in resolved:
-        raise HTTPException(status_code=422, detail="Origin address could not be geocoded.")
+        raise HTTPException(status_code=422, detail=s["err_origin_geocode"])
 
     if body.destination and body.destination not in resolved:
-        raise HTTPException(status_code=422, detail="Destination address could not be geocoded.")
+        raise HTTPException(status_code=422, detail=s["err_destination_geocode"])
 
     resolved_addresses = [a for a in body.addresses if a in resolved]
 
     if len(resolved_addresses) < 2:
         raise HTTPException(
             status_code=400,
-            detail="At least 2 addresses must be successfully geocoded to optimize a route.",
+            detail=s["err_min_geocoded"],
         )
 
     fixed_first = body.fixed_first

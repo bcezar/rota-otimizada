@@ -82,7 +82,7 @@ def test_optimize_route_origin_geocoding_fails(mock_geocode_all):
     )
 
     assert response.status_code == 422
-    assert "Origin address could not be geocoded" in response.json()["detail"]
+    assert "origem" in response.json()["detail"].lower()
 
 
 @patch("app.routers.routes.geocoding.geocode_all")
@@ -200,4 +200,4 @@ def test_optimize_route_destination_geocoding_fails(mock_geocode_all):
     )
 
     assert response.status_code == 422
-    assert "Destination address could not be geocoded" in response.json()["detail"]
+    assert "destino" in response.json()["detail"].lower()

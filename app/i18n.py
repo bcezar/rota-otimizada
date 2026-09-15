@@ -455,6 +455,9 @@ _STRINGS: dict[str, dict] = {
         # HTTP errors
         "err_auth_required":  "Autenticação necessária.",
         "err_session_invalid": "Sessão inválida ou expirada.",
+        "err_origin_geocode":      "O endereço de origem não pôde ser geocodificado.",
+        "err_destination_geocode": "O endereço de destino não pôde ser geocodificado.",
+        "err_min_geocoded":        "Pelo menos 2 endereços precisam ser geocodificados com sucesso para otimizar uma rota.",
     },
     "en-US": {
         "lang":             "en-US",
@@ -909,6 +912,9 @@ _STRINGS: dict[str, dict] = {
         # HTTP errors
         "err_auth_required":  "Authentication required.",
         "err_session_invalid": "Invalid or expired session.",
+        "err_origin_geocode":      "Origin address could not be geocoded.",
+        "err_destination_geocode": "Destination address could not be geocoded.",
+        "err_min_geocoded":        "At least 2 addresses must be successfully geocoded to optimize a route.",
     },
 }
 
