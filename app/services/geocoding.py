@@ -38,6 +38,11 @@ class _LRUCache(OrderedDict):
 _cache: _LRUCache = _LRUCache(maxsize=_CACHE_MAXSIZE)
 
 
+def _cache_key(address: str) -> str:
+    """Collapse whitespace/case differences so equivalent inputs share a cache entry."""
+    return re.sub(r"\s+", " ", address.strip()).lower()
+
+
 _STREET_PREFIXES = r"(?:Rua|R\.|Av\.|Avenida|Alameda|Al\.|Travessa|Tv\.|Estrada|Rod\.|Rodovia|Praça|Pça\.)"
 
 
@@ -179,17 +184,18 @@ async def geocode(
     address: str, client: httpx.AsyncClient,
     lat: float | None = None, lng: float | None = None,
 ) -> tuple[float, float] | None:
-    if address in _cache:
-        return _cache[address]
+    key = _cache_key(address)
+    if key in _cache:
+        return _cache[key]
 
     if settings.google_maps_api_key:
         coords = await _geocode_google(address, client, lat=lat, lng=lng)
     else:
         coords = await _geocode_nominatim(address, client, lat=lat, lng=lng)
 
-    _cache[address] = coords
+    _cache[key] = coords
     if coords is not None:
-        asyncio.create_task(storage.set_geocoding_cache(address, coords[0], coords[1]))
+        asyncio.create_task(storage.set_geocoding_cache(key, coords[0], coords[1]))
     return coords
 
 
@@ -260,23 +266,25 @@ async def geocode_all(
     # Tier 1: in-memory hits (instant)
     remaining = []
     for addr in addresses:
-        if addr in _cache and _cache[addr] is not None:
-            resolved[addr] = _cache[addr]
-        elif addr not in _cache:
+        key = _cache_key(addr)
+        if key in _cache and _cache[key] is not None:
+            resolved[addr] = _cache[key]
+        elif key not in _cache:
             remaining.append(addr)
-        # addr in _cache with None value → known failure this session, skip
+        # key in _cache with None value → known failure this session, skip
 
     memory_hits = len(addresses) - len(remaining)
 
     # Tier 2: Turso batch lookup for remaining
     turso_hit_count = 0
     if remaining:
-        turso_hits = await storage.get_geocoding_cache_batch(remaining)
-        for addr, coords in turso_hits.items():
-            _cache[addr] = coords
-            resolved[addr] = coords
+        remaining_keys = {_cache_key(a): a for a in remaining}
+        turso_hits = await storage.get_geocoding_cache_batch(list(remaining_keys))
+        for key, coords in turso_hits.items():
+            _cache[key] = coords
+            resolved[remaining_keys[key]] = coords
         turso_hit_count = len(turso_hits)
-        remaining = [a for a in remaining if a not in turso_hits]
+        remaining = [a for a in remaining if _cache_key(a) not in turso_hits]
 
     logger.info(
         "geocode_all total=%d memory_hits=%d turso_hits=%d api_calls=%d",

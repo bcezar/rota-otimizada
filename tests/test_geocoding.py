@@ -64,6 +64,22 @@ async def test_geocode_uses_cache(use_nominatim):
 
 
 @pytest.mark.asyncio
+async def test_geocode_cache_ignores_case_and_whitespace(use_nominatim):
+    mock_response = MagicMock()
+    mock_response.json.return_value = [{"lat": "-23.5615", "lon": "-46.6565"}]
+    mock_response.raise_for_status = MagicMock()
+
+    mock_client = AsyncMock()
+    mock_client.get.return_value = mock_response
+
+    await geocoding.geocode("Av. Paulista, 1000", mock_client)
+    await geocoding.geocode("  av. paulista,   1000  ", mock_client)
+    await geocoding.geocode("AV. PAULISTA, 1000", mock_client)
+
+    assert mock_client.get.call_count == 1
+
+
+@pytest.mark.asyncio
 async def test_geocode_all_separates_failures():
     with patch("app.services.geocoding.geocode") as mock_geocode, \
          patch("asyncio.sleep", new_callable=AsyncMock), \
