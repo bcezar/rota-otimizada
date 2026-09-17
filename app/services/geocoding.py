@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+from collections import OrderedDict
 
 import httpx
 
@@ -12,7 +13,29 @@ from app import storage
 
 logger = logging.getLogger(__name__)
 
-_cache: dict[str, tuple[float, float] | None] = {}
+_CACHE_MAXSIZE = 2000
+
+
+class _LRUCache(OrderedDict):
+    """Dict-like cache that evicts the least-recently-used entry past maxsize."""
+
+    def __init__(self, maxsize: int) -> None:
+        super().__init__()
+        self.maxsize = maxsize
+
+    def __getitem__(self, key):
+        value = super().__getitem__(key)
+        self.move_to_end(key)
+        return value
+
+    def __setitem__(self, key, value) -> None:
+        super().__setitem__(key, value)
+        self.move_to_end(key)
+        if len(self) > self.maxsize:
+            self.popitem(last=False)
+
+
+_cache: _LRUCache = _LRUCache(maxsize=_CACHE_MAXSIZE)
 
 
 _STREET_PREFIXES = r"(?:Rua|R\.|Av\.|Avenida|Alameda|Al\.|Travessa|Tv\.|Estrada|Rod\.|Rodovia|Praça|Pça\.)"
