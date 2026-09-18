@@ -33,10 +33,9 @@ _STRINGS: dict[str, dict] = {
 
         # How-to card
         "how_to_step1":     "Adicione seus endereços de entrega ou visita",
-        "how_to_step2":     "Defina início e destino (opcional)",
+        "how_to_step2":     'Defina início e destino (opcional) — ou toque em "Mapa" para selecionar arrastando',
         "how_to_step3":     'Clique em "Otimizar rota"',
         "how_to_step4":     'Use "Iniciar Execução" e navegue parada a parada',
-        "how_to_step5":     'Não sabe o endereço? Use o botão "Mapa" para arrastar e selecionar',
         "how_to_dismiss":   "Entendi, não mostrar mais",
 
         # Stops section
@@ -230,7 +229,6 @@ _STRINGS: dict[str, dict] = {
         "howto_step2_dest": "Destino final (opcional)",
         "howto_step3_stops": "Adicione as paradas",
         "howto_step4_pin":  "Início / Destino por parada",
-        "howto_step5_map":  "Selecionar local no mapa",
         "howto_understood": "Entendi",
 
         # Auth modal
@@ -505,10 +503,9 @@ _STRINGS: dict[str, dict] = {
 
         # How-to card
         "how_to_step1":     "Add your delivery or visit addresses",
-        "how_to_step2":     "Set start and destination (optional)",
+        "how_to_step2":     'Set start and destination (optional) — or tap "Map" to drag and select',
         "how_to_step3":     'Click "Optimize route"',
         "how_to_step4":     'Use "Start Execution" and navigate stop by stop',
-        "how_to_step5":     'Don\'t know the address? Use the "Map" button to drag and select',
         "how_to_dismiss":   "Got it, don't show again",
 
         # Stops section
@@ -702,7 +699,6 @@ _STRINGS: dict[str, dict] = {
         "howto_step2_dest": "Final destination (optional)",
         "howto_step3_stops": "Add the stops",
         "howto_step4_pin":  "Start / Destination per stop",
-        "howto_step5_map":  "Pick a location on the map",
         "howto_understood": "Got it",
 
         # Auth modal
