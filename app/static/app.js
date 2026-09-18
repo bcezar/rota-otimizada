@@ -67,6 +67,12 @@ function routeApp() {
     stopObservations: {},
     _mapInstance:   null,
     _mapMarkers:    [],
+    pickLocationOpen:    false,
+    pickLocationTarget:  null,   // 'origin' | 'destination' | 'stop'
+    pickLocationAddress: '',
+    pickLocationError:   '',
+    pickLocationLoading: false,
+    _pickLocationMapInstance: null,
     error:          '',
     notice:         '',
     clearConfirmOpen:   false,
@@ -356,18 +362,24 @@ function routeApp() {
       return pins;
     },
 
-    async _renderMap() {
-      if (!this.result) return;
-      if (!window.GOOGLE_MAPS_KEY) { this._renderSvgMap(); return; }
-
-      if (!window.google?.maps) {
-        await new Promise((resolve, reject) => {
+    _ensureGoogleMaps() {
+      if (window.google?.maps) return Promise.resolve();
+      if (!this._googleMapsLoadPromise) {
+        this._googleMapsLoadPromise = new Promise((resolve, reject) => {
           const s = document.createElement('script');
           s.src = `https://maps.googleapis.com/maps/api/js?key=${window.GOOGLE_MAPS_KEY}`;
           s.onload = resolve; s.onerror = reject;
           document.head.appendChild(s);
         });
       }
+      return this._googleMapsLoadPromise;
+    },
+
+    async _renderMap() {
+      if (!this.result) return;
+      if (!window.GOOGLE_MAPS_KEY) { this._renderSvgMap(); return; }
+
+      await this._ensureGoogleMaps();
 
       const pins = this._buildPins();
       if (pins.length < 2) return;
@@ -893,6 +905,74 @@ function routeApp() {
           this.geolocating = false;
         }
       );
+    },
+
+    async openPickLocation(target) {
+      if (!window.GOOGLE_MAPS_KEY) return;
+      this.pickLocationTarget = target;
+      this.pickLocationAddress = '';
+      this.pickLocationError = '';
+      this.pickLocationLoading = false;
+      this.pickLocationOpen = true;
+
+      await this._ensureGoogleMaps();
+      await this.$nextTick();
+
+      const mapEl = document.getElementById('pick-location-map');
+      if (!mapEl) return;
+
+      const center = this.locationHint || { lat: -14.235, lng: -51.9253 };
+      const map = new google.maps.Map(mapEl, {
+        zoom: this.locationHint ? 16 : 4,
+        center,
+        disableDefaultUI: true,
+        gestureHandling: 'greedy',
+        styles: [{ featureType: 'poi', stylers: [{ visibility: 'off' }] }],
+      });
+      this._pickLocationMapInstance = map;
+
+      map.addListener('idle', () => this._reverseGeocodeMapCenter());
+    },
+
+    async _reverseGeocodeMapCenter() {
+      const map = this._pickLocationMapInstance;
+      if (!map) return;
+      const c = map.getCenter();
+      const lat = c.lat(), lng = c.lng();
+      this.pickLocationLoading = true;
+      this.pickLocationError = '';
+      try {
+        const res = await fetch(`/api/v1/reverse?lat=${lat}&lng=${lng}`);
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        this.pickLocationAddress = data.address;
+      } catch (_) {
+        this.pickLocationAddress = '';
+        this.pickLocationError = window.I18N.pick_location_error;
+      } finally {
+        this.pickLocationLoading = false;
+      }
+    },
+
+    closePickLocation() {
+      this.pickLocationOpen = false;
+      this.pickLocationTarget = null;
+      this.pickLocationAddress = '';
+      this.pickLocationError = '';
+      this._pickLocationMapInstance = null;
+    },
+
+    confirmPickLocation() {
+      const address = this.pickLocationAddress;
+      if (!address) return;
+      if (this.pickLocationTarget === 'origin') {
+        this.originInput = address; this.origin = address; this.originSuggestions = [];
+      } else if (this.pickLocationTarget === 'destination') {
+        this.destInput = address; this.dest = address; this.destSuggestions = [];
+      } else if (this.pickLocationTarget === 'stop') {
+        this.newAddress = address; this.addressSuggestions = [];
+      }
+      this.closePickLocation();
     },
 
     async shareRoute() {

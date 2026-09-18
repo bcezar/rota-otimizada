@@ -82,6 +82,14 @@ _STRINGS: dict[str, dict] = {
         "dest_placeholder": "Ex.: Depósito, Rua Y, 456, Campinas/SP",
         "use_same_origin":  "← Usar mesmo endereço da origem",
         "geo_btn":          "Localização",
+        "map_pick_btn":     "Mapa",
+
+        # Pick location on map modal
+        "pick_location_title":       "Escolher local no mapa",
+        "pick_location_hint":        "Mova o mapa para selecionar o local",
+        "pick_location_loading":     "Buscando endereço…",
+        "pick_location_confirm_btn": "Selecionar local",
+        "pick_location_error":       "Não foi possível identificar um endereço aqui.",
 
         # Optimize button
         "optimize_btn":     "Otimizar rota",
@@ -540,6 +548,14 @@ _STRINGS: dict[str, dict] = {
         "dest_placeholder": "E.g.: Warehouse, 456 Elm St, Chicago, IL",
         "use_same_origin":  "← Use same address as origin",
         "geo_btn":          "Location",
+        "map_pick_btn":     "Map",
+
+        # Pick location on map modal
+        "pick_location_title":       "Choose location on map",
+        "pick_location_hint":        "Move the map to select the location",
+        "pick_location_loading":     "Looking up address…",
+        "pick_location_confirm_btn": "Select location",
+        "pick_location_error":       "Could not identify an address here.",
 
         # Optimize button
         "optimize_btn":     "Optimize route",

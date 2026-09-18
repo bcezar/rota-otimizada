@@ -230,6 +230,41 @@ input[type="text"]:disabled { background: #f9fafb; color: #9ca3af; cursor: defau
 .btn-geo:disabled { opacity: .5; cursor: default; }
 @media (max-width: 480px) { .btn-geo-text { display: none; } }
 
+/* === PICK LOCATION ON MAP === */
+.pick-location-overlay {
+  position: fixed; inset: 0; z-index: 600;
+  background: #fff;
+  display: flex; flex-direction: column;
+}
+.pick-location-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .9rem 1.1rem; border-bottom: 1px solid #e5e7eb; flex-shrink: 0;
+}
+.pick-location-map-wrap { position: relative; flex: 1; min-height: 0; }
+.pick-location-map { width: 100%; height: 100%; }
+.pick-location-pin {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -100%);
+  pointer-events: none; z-index: 1;
+  font-size: 2.2rem; line-height: 1;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,.35));
+}
+.pick-location-footer {
+  padding: 1rem 1.1rem 1.4rem; border-top: 1px solid #e5e7eb; flex-shrink: 0;
+}
+.pick-location-address {
+  font-size: .92rem; color: #111; font-weight: 600;
+  margin-bottom: .8rem; min-height: 1.3em;
+}
+.pick-location-address.is-loading,
+.pick-location-address.is-error { color: #6b7280; font-weight: 400; font-style: italic; }
+.pick-location-address.is-error { color: #b91c1c; }
+.btn-pick-location-confirm {
+  width: 100%; padding: .8rem; border: none; border-radius: 10px;
+  background: #1d4ed8; color: #fff; font-size: .95rem; font-weight: 700; cursor: pointer;
+}
+.btn-pick-location-confirm:disabled { background: #c7d7f8; cursor: default; }
+
 .btn-copy-origin {
   margin-top: .45rem;
   font-size: .8rem; color: #1d4ed8; background: none; border: none;

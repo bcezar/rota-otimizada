@@ -292,6 +292,30 @@
     </div>
   </div>
 
+  <!-- Pick Location on Map -->
+  <div class="pick-location-overlay" x-show="pickLocationOpen" x-transition x-cloak>
+    <div class="pick-location-header">
+      <h2 class="modal-title" style="margin-bottom:0">{{ i18n.pick_location_title }}</h2>
+      <button class="drawer-close" @click="closePickLocation()" aria-label="Fechar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <div class="pick-location-map-wrap">
+      <div id="pick-location-map" class="pick-location-map"></div>
+      <div class="pick-location-pin">📍</div>
+    </div>
+    <div class="pick-location-footer">
+      <p class="pick-location-address"
+         :class="{ 'is-loading': pickLocationLoading, 'is-error': !pickLocationLoading && pickLocationError }"
+         x-text="pickLocationLoading ? i18n.pick_location_loading : (pickLocationError || pickLocationAddress || i18n.pick_location_hint)"></p>
+      <button class="btn-pick-location-confirm"
+              :disabled="pickLocationLoading || !pickLocationAddress"
+              @click="confirmPickLocation()">{{ i18n.pick_location_confirm_btn }}</button>
+    </div>
+  </div>
+
   <!-- Import Modal -->
   <div class="modal-overlay" x-show="importOpen" x-transition @click.self="importOpen = false; importFile = null; importStep = 'select'; importError = ''">
     <div class="modal-card">
@@ -977,6 +1001,7 @@
                @keydown.escape="cancelAddAddress()" />
       </div>
       <div class="addr-edit-actions" style="margin-top:.5rem">
+        <button class="btn-geo" @click="openPickLocation('stop')">{{ i18n.map_pick_btn }}</button>
         <button class="btn-save-addr" @click="addAddress()" :disabled="newAddress.trim() === ''">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -1188,6 +1213,7 @@
           <span class="btn-geo-text" x-show="!geolocating">{{ i18n.geo_btn }}</span>
           <span x-show="geolocating">…</span>
         </button>
+        <button class="btn-geo" x-show="origin === ''" @click="openPickLocation('origin')">{{ i18n.map_pick_btn }}</button>
       </div>
     </div>
 
@@ -1218,6 +1244,7 @@
       <div class="endpoint-actions">
         <button class="btn btn-add" x-show="dest === ''" @click="setDest()" :disabled="destInput.trim() === ''">+</button>
         <button class="btn btn-remove" x-show="dest !== ''" @click="dest = ''; destInput = ''; destSuggestions = []">−</button>
+        <button class="btn-geo" x-show="dest === ''" @click="openPickLocation('destination')">{{ i18n.map_pick_btn }}</button>
       </div>
     </div>
 
