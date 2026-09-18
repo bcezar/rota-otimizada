@@ -238,8 +238,11 @@ async def reverse_geocode(lat: float, lng: float) -> "str | None":
                 data = response.json()
             except (httpx.HTTPError, ValueError):
                 return None
-            if data.get("status") == "OK" and data.get("results"):
-                return data["results"][0]["formatted_address"]
+            if data.get("status") == "OK":
+                for result in data.get("results", []):
+                    if "plus_code" not in result.get("types", []):
+                        return result["formatted_address"]
+                return None
         else:
             try:
                 response = await client.get(

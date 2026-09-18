@@ -287,6 +287,10 @@
           <div class="modal-step-num">4</div>
           <p class="modal-step-text"><strong>{{ i18n.howto_step4_pin }}</strong> — use os botões <em>Início</em> e <em>Destino</em> em cada endereço para forçar uma parada obrigatória no começo ou no fim da rota.</p>
         </div>
+        <div class="modal-step">
+          <div class="modal-step-num">5</div>
+          <p class="modal-step-text"><strong>{{ i18n.howto_step5_map }}</strong> — não sabe o endereço exato? Toque no botão <em>Mapa</em> ao lado de origem, destino ou parada, arraste até o local e confirme.</p>
+        </div>
       </div>
       <button class="btn-modal-close" @click="helpOpen = false">{{ i18n.howto_understood }}</button>
     </div>
@@ -310,9 +314,15 @@
       <p class="pick-location-address"
          :class="{ 'is-loading': pickLocationLoading, 'is-error': !pickLocationLoading && pickLocationError }"
          x-text="pickLocationLoading ? i18n.pick_location_loading : (pickLocationError || pickLocationAddress || i18n.pick_location_hint)"></p>
-      <button class="btn-pick-location-confirm"
-              :disabled="pickLocationLoading || !pickLocationAddress"
-              @click="confirmPickLocation()">{{ i18n.pick_location_confirm_btn }}</button>
+      <p class="pick-location-stop-hint" x-show="pickLocationTarget === 'stop'">{{ i18n.pick_location_stop_hint }}</p>
+      <div class="pick-location-actions">
+        <button class="btn-pick-location-confirm"
+                :disabled="pickLocationLoading || !pickLocationAddress"
+                @click="confirmPickLocation()"
+                x-text="pickLocationTarget === 'stop' ? i18n.pick_location_add_stop_btn : i18n.pick_location_confirm_btn"></button>
+        <button class="btn-pick-location-done" x-show="pickLocationTarget === 'stop'"
+                @click="closePickLocation()">{{ i18n.pick_location_done_btn }}</button>
+      </div>
     </div>
   </div>
 
@@ -916,6 +926,14 @@
         </svg>
         <span>{{ i18n.how_to_step4 }}</span>
       </div>
+      <div class="how-to-connector"></div>
+      <div class="how-to-step">
+        <span class="how-to-num">5</span>
+        <svg class="how-to-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 21s-7-5.686-7-11a7 7 0 0 1 14 0c0 5.314-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>
+        </svg>
+        <span>{{ i18n.how_to_step5 }}</span>
+      </div>
     </div>
     <button class="how-to-dismiss" @click="howToVisible = false; localStorage.setItem('howToSeen', '1')">
       {{ i18n.how_to_dismiss }}
@@ -1001,7 +1019,12 @@
                @keydown.escape="cancelAddAddress()" />
       </div>
       <div class="addr-edit-actions" style="margin-top:.5rem">
-        <button class="btn-geo" @click="openPickLocation('stop')">{{ i18n.map_pick_btn }}</button>
+        <button class="btn-map-pick" @click="openPickLocation('stop')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 21s-7-5.686-7-11a7 7 0 0 1 14 0c0 5.314-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>
+          </svg>
+          {{ i18n.map_pick_btn }}
+        </button>
         <button class="btn-save-addr" @click="addAddress()" :disabled="newAddress.trim() === ''">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -1213,7 +1236,12 @@
           <span class="btn-geo-text" x-show="!geolocating">{{ i18n.geo_btn }}</span>
           <span x-show="geolocating">…</span>
         </button>
-        <button class="btn-geo" x-show="origin === ''" @click="openPickLocation('origin')">{{ i18n.map_pick_btn }}</button>
+        <button class="btn-map-pick" x-show="origin === ''" @click="openPickLocation('origin')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 21s-7-5.686-7-11a7 7 0 0 1 14 0c0 5.314-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>
+          </svg>
+          {{ i18n.map_pick_btn }}
+        </button>
       </div>
     </div>
 
@@ -1244,7 +1272,12 @@
       <div class="endpoint-actions">
         <button class="btn btn-add" x-show="dest === ''" @click="setDest()" :disabled="destInput.trim() === ''">+</button>
         <button class="btn btn-remove" x-show="dest !== ''" @click="dest = ''; destInput = ''; destSuggestions = []">−</button>
-        <button class="btn-geo" x-show="dest === ''" @click="openPickLocation('destination')">{{ i18n.map_pick_btn }}</button>
+        <button class="btn-map-pick" x-show="dest === ''" @click="openPickLocation('destination')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 21s-7-5.686-7-11a7 7 0 0 1 14 0c0 5.314-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>
+          </svg>
+          {{ i18n.map_pick_btn }}
+        </button>
       </div>
     </div>
 

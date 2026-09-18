@@ -967,12 +967,18 @@ function routeApp() {
       if (!address) return;
       if (this.pickLocationTarget === 'origin') {
         this.originInput = address; this.origin = address; this.originSuggestions = [];
+        this.closePickLocation();
       } else if (this.pickLocationTarget === 'destination') {
         this.destInput = address; this.dest = address; this.destSuggestions = [];
+        this.closePickLocation();
       } else if (this.pickLocationTarget === 'stop') {
-        this.newAddress = address; this.addressSuggestions = [];
+        this.addresses.push({ address, description: '' });
+        this._track('stop_added', { total_stops: this.addresses.length, source: 'map_pick' });
+        this.setLocationHint(address);
+        this.pickLocationAddress = '';
+        this.notice = window.I18N.pick_location_stop_added;
+        setTimeout(() => { this.notice = ''; }, 2000);
       }
-      this.closePickLocation();
     },
 
     async shareRoute() {
