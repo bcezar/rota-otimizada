@@ -907,6 +907,21 @@ function routeApp() {
       );
     },
 
+    async _getPickLocationCenter() {
+      if (navigator.geolocation) {
+        try {
+          const pos = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000, maximumAge: 60000 });
+          });
+          const center = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          if (!this.locationHint) this.locationHint = center;
+          return { center, zoom: 16 };
+        } catch (_) { /* permission denied/unavailable — fall through to next option */ }
+      }
+      if (this.locationHint) return { center: this.locationHint, zoom: 16 };
+      return { center: { lat: -14.235, lng: -51.9253 }, zoom: 4 };
+    },
+
     async openPickLocation(target) {
       if (!window.GOOGLE_MAPS_KEY) return;
       this.pickLocationTarget = target;
@@ -916,15 +931,14 @@ function routeApp() {
       this.pickLocationOpen = true;
 
       await this._ensureGoogleMaps();
+      const { center, zoom } = await this._getPickLocationCenter();
       await this.$nextTick();
 
       const mapEl = document.getElementById('pick-location-map');
       if (!mapEl) return;
 
-      const center = this.locationHint || { lat: -14.235, lng: -51.9253 };
       const map = new google.maps.Map(mapEl, {
-        zoom: this.locationHint ? 16 : 4,
-        center,
+        zoom, center,
         disableDefaultUI: true,
         gestureHandling: 'greedy',
         styles: [{ featureType: 'poi', stylers: [{ visibility: 'off' }] }],
