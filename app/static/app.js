@@ -164,6 +164,17 @@ function routeApp() {
       const urlAddrs     = params.getAll('a');
       const urlSaved     = params.get('saved');
 
+      // GA4 already captures utm_* as session-level traffic source dimensions,
+      // but we also fire an explicit event so marketing-driven visits show up
+      // as their own countable event rather than only as a session attribute.
+      if (params.get('utm_source')) {
+        this._track('marketing_email_visit', {
+          utm_source:   params.get('utm_source'),
+          utm_medium:   params.get('utm_medium')   ?? '',
+          utm_campaign: params.get('utm_campaign') ?? '',
+        });
+      }
+
       // Handle OAuth/magic-link callback params
       if (sessionToken) {
         history.replaceState(null, '', location.pathname);
@@ -924,6 +935,7 @@ function routeApp() {
 
     async openPickLocation(target) {
       if (!window.GOOGLE_MAPS_KEY) return;
+      this._track('map_pick_opened', { target });
       this.pickLocationTarget = target;
       this.pickLocationAddress = '';
       this.pickLocationError = '';
@@ -981,12 +993,15 @@ function routeApp() {
       if (!address) return;
       if (this.pickLocationTarget === 'origin') {
         this.originInput = address; this.origin = address; this.originSuggestions = [];
+        this._track('map_pick_confirmed', { target: 'origin' });
         this.closePickLocation();
       } else if (this.pickLocationTarget === 'destination') {
         this.destInput = address; this.dest = address; this.destSuggestions = [];
+        this._track('map_pick_confirmed', { target: 'destination' });
         this.closePickLocation();
       } else if (this.pickLocationTarget === 'stop') {
         this.addresses.push({ address, description: '' });
+        this._track('map_pick_confirmed', { target: 'stop' });
         this._track('stop_added', { total_stops: this.addresses.length, source: 'map_pick' });
         this.setLocationHint(address);
         this.pickLocationAddress = '';

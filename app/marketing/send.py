@@ -41,7 +41,7 @@ async def _send_one(recipient: dict, campaign_slug: str) -> bool:
             "from": f"{s['email_from_name']} <{from_email_for(locale)}>",
             "to": [recipient["email"]],
             "subject": campaign["subject"],
-            "html": render_campaign_email(campaign, recipient["id"], locale),
+            "html": render_campaign_email(campaign, recipient["id"], locale, campaign_slug),
             "headers": {
                 "List-Unsubscribe": f"<{unsubscribe_url(recipient['id'], locale)}>",
                 "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",

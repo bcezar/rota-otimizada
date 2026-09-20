@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+from urllib.parse import urlencode
 
 from app.config import settings
 from app.i18n import get_strings
@@ -51,7 +52,15 @@ def _domain(base_url: str) -> str:
     return base_url.removeprefix("https://").removeprefix("http://").rstrip("/")
 
 
-def render_campaign_email(campaign: dict[str, str], user_id: str, locale: str) -> str:
+def _with_utm(url: str, campaign_slug: str) -> str:
+    """Tags the CTA link so GA4 attributes the visit to this campaign (session-level
+    source/medium/campaign dimensions) — app.js also fires an explicit event for it."""
+    utm = urlencode({"utm_source": "email", "utm_medium": "marketing", "utm_campaign": campaign_slug})
+    sep = "&" if "?" in url else "?"
+    return f"{url}{sep}{utm}"
+
+
+def render_campaign_email(campaign: dict[str, str], user_id: str, locale: str, campaign_slug: str) -> str:
     """Renders the full HTML body for a marketing campaign: colored header, white
     content card, CTA and a footer with institutional links + unsubscribe.
     Built with tables/inline styles for email-client compatibility.
@@ -59,7 +68,7 @@ def render_campaign_email(campaign: dict[str, str], user_id: str, locale: str) -
     environment the sending script happens to run in."""
     s = get_strings(locale)
     base_url = _base_url_for(locale)
-    cta_url = _abs_url(campaign["cta_url"], base_url)
+    cta_url = _with_utm(_abs_url(campaign["cta_url"], base_url), campaign_slug)
 
     footer_links = [
         (s["marketing_email_footer_contact"], _abs_url(s["marketing_email_footer_contact_href"], base_url)),

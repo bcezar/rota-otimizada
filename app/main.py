@@ -129,7 +129,7 @@ async def marketing_preview(slug: str, locale: str = settings.locale):
     campaign = get_campaign(slug, locale)
     if not campaign:
         raise HTTPException(status_code=404)
-    html = render_campaign_email(campaign, "preview-user-id", locale)
+    html = render_campaign_email(campaign, "preview-user-id", locale, slug)
     return Response(content=html, media_type="text/html")
 
 
