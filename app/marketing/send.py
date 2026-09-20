@@ -2,6 +2,7 @@
 
 Usage:
     python -m app.marketing.send --campaign novidades-mapa --dry-run
+    python -m app.marketing.send --campaign novidades-mapa --to you@example.com
     python -m app.marketing.send --campaign novidades-mapa --limit 1
     python -m app.marketing.send --campaign novidades-mapa
 """
@@ -44,6 +45,7 @@ async def main() -> None:
     parser.add_argument("--campaign", required=True, help="Campaign slug (see app/marketing/campaigns.py)")
     parser.add_argument("--dry-run", action="store_true", help="List recipients without sending")
     parser.add_argument("--limit", type=int, default=None, help="Only send to the first N recipients")
+    parser.add_argument("--to", default=None, help="Send only to this email address (test send, bypasses the recipient list)")
     args = parser.parse_args()
 
     campaign = get_campaign(args.campaign, settings.locale)
@@ -56,9 +58,12 @@ async def main() -> None:
         parser.error("MARKETING_UNSUBSCRIBE_SECRET not set — cannot generate unsubscribe links")
 
     await storage.init_db()
-    recipients = await storage.list_marketing_recipients()
-    if args.limit is not None:
-        recipients = recipients[: args.limit]
+    if args.to:
+        recipients = [{"id": "test-send", "email": args.to, "name": None}]
+    else:
+        recipients = await storage.list_marketing_recipients()
+        if args.limit is not None:
+            recipients = recipients[: args.limit]
 
     logger.info("campaign=%s recipients=%d dry_run=%s", args.campaign, len(recipients), args.dry_run)
     if args.dry_run:
