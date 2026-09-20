@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="{{ i18n.lang }}">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ title }} — {{ i18n.brand }}</title>
+  <link rel="icon" type="image/png" href="{{ i18n.icon }}" />
+  <meta name="robots" content="noindex, nofollow" />
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 420px; margin: 4rem auto; padding: 0 1.5rem;
+      text-align: center; color: #111;
+    }
+    img { width: 40px; border-radius: 10px; margin-bottom: 1.5rem; }
+    h1 { font-size: 1.2rem; margin: 0 0 .75rem; }
+    p { color: #6b7280; font-size: .92rem; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <img src="{{ i18n.logo }}" alt="{{ i18n.brand }}" />
+  <h1>{{ message_title }}</h1>
+  <p>{{ message_body }}</p>
+</body>
+</html>

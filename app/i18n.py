@@ -464,6 +464,12 @@ _STRINGS: dict[str, dict] = {
         "welcome_email_cta":               "Ir para o Rota Otimizada",
         "welcome_email_footer":            "Dúvidas? É só responder este e-mail ou usar a seção 'Fale conosco' no app.",
 
+        # email (marketing)
+        "marketing_email_unsubscribe":     "Não quero mais receber novidades por e-mail",
+        "marketing_unsubscribe_title":     "Você foi descadastrado",
+        "marketing_unsubscribe_body":      "Você não receberá mais e-mails de novidades do Rota Otimizada. Transacionais (login, cobrança) continuam sendo enviados normalmente.",
+        "marketing_unsubscribe_error":     "Link inválido ou expirado.",
+
         # HTTP errors
         "err_auth_required":  "Autenticação necessária.",
         "err_session_invalid": "Sessão inválida ou expirada.",
@@ -932,6 +938,12 @@ _STRINGS: dict[str, dict] = {
         "welcome_email_body_exclusive":    "Your coupon has been applied. During your first month you can optimize routes with up to <strong>100 stops</strong> and unlimited optimizations.",
         "welcome_email_cta":               "Go to Find My Route",
         "welcome_email_footer":            "Questions? Just reply to this email or use the 'Contact us' section in the app.",
+
+        # email (marketing)
+        "marketing_email_unsubscribe":     "I no longer want to receive news by email",
+        "marketing_unsubscribe_title":     "You've been unsubscribed",
+        "marketing_unsubscribe_body":      "You will no longer receive news emails from Find My Route. Transactional emails (login, billing) will continue as usual.",
+        "marketing_unsubscribe_error":     "Invalid or expired link.",
 
         # HTTP errors
         "err_auth_required":  "Authentication required.",

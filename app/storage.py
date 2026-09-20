@@ -150,6 +150,7 @@ async def init_db() -> None:
     await _execute("ALTER TABLE users ADD COLUMN stripe_customer_id TEXT", ignore_error=True)
     await _execute("ALTER TABLE users ADD COLUMN signup_source TEXT", ignore_error=True)
     await _execute("ALTER TABLE users ADD COLUMN exclusive_until TEXT", ignore_error=True)
+    await _execute("ALTER TABLE users ADD COLUMN marketing_opt_out INTEGER DEFAULT 0", ignore_error=True)
 
 
 # ── Short links ─────────────────────────────────────────────────────────────
@@ -335,6 +336,41 @@ async def find_or_create_user_google(email: str, google_sub: str,
             "google_sub": google_sub, "name": name, "picture_url": picture_url}
     _users[user_id] = user
     return user
+
+
+async def get_user_by_id(user_id: str) -> dict | None:
+    if _turso_configured():
+        r = await _execute(
+            "SELECT id, email, is_pro, email_verified, name, picture_url "
+            "FROM users WHERE id = ?", [user_id]
+        )
+        rows = r.get("rows", [])
+        return _row_to_user(rows[0]) if rows else None
+    return _users.get(user_id)
+
+
+# ── Marketing e-mail opt-out ─────────────────────────────────────────────────
+
+async def list_marketing_recipients() -> list[dict]:
+    if _turso_configured():
+        r = await _execute(
+            "SELECT id, email, name FROM users "
+            "WHERE marketing_opt_out IS NULL OR marketing_opt_out = 0"
+        )
+        rows = r.get("rows", [])
+        return [{"id": _cell(row[0]), "email": _cell(row[1]), "name": _cell(row[2])} for row in rows]
+    return [
+        {"id": uid, "email": u["email"], "name": u.get("name")}
+        for uid, u in _users.items()
+        if not u.get("marketing_opt_out")
+    ]
+
+
+async def set_marketing_opt_out(user_id: str) -> None:
+    if _turso_configured():
+        await _execute("UPDATE users SET marketing_opt_out = 1 WHERE id = ?", [user_id])
+    elif user_id in _users:
+        _users[user_id]["marketing_opt_out"] = True
 
 
 async def create_session(user_id: str) -> str:

@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     stripe_webhook_secret: Optional[str] = None
     stripe_price_id: Optional[str] = None
     contact_notify_email: Optional[str] = None
+    marketing_unsubscribe_secret: Optional[str] = None
 
 
 settings = Settings()

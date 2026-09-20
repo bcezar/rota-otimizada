@@ -7,6 +7,7 @@ logging.basicConfig(
     stream=sys.stdout,
     format="%(levelname)s:     %(name)s - %(message)s",
 )
+import hmac
 from hashlib import md5
 from pathlib import Path
 from urllib.parse import urlencode
@@ -116,6 +117,39 @@ async def index(request: Request):
         "google_maps_key": settings.google_maps_api_key or "",
         "ga_measurement_id": settings.ga_measurement_id or "",
         "base_url": _BASE_URL,
+        "i18n": _i18n,
+    })
+
+
+@app.get("/marketing/preview/{slug}", include_in_schema=False)
+async def marketing_preview(slug: str):
+    from app.marketing.campaigns import get_campaign
+    from app.marketing.render import render_campaign_email
+
+    campaign = get_campaign(slug, settings.locale)
+    if not campaign:
+        raise HTTPException(status_code=404)
+    html = render_campaign_email(campaign, "preview-user-id")
+    return Response(content=html, media_type="text/html")
+
+
+@app.get("/marketing/unsubscribe", include_in_schema=False)
+async def marketing_unsubscribe(request: Request, uid: str, sig: str):
+    from app.marketing.render import unsubscribe_signature
+
+    valid = bool(uid) and bool(sig) and hmac.compare_digest(unsubscribe_signature(uid), sig)
+    if valid:
+        await storage.set_marketing_opt_out(uid)
+        message_title = _i18n["marketing_unsubscribe_title"]
+        message_body = _i18n["marketing_unsubscribe_body"]
+    else:
+        message_title = _i18n["marketing_unsubscribe_error"]
+        message_body = ""
+    return templates.TemplateResponse("marketing_unsubscribe.html", {
+        "request": request,
+        "title": message_title,
+        "message_title": message_title,
+        "message_body": message_body,
         "i18n": _i18n,
     })
 
