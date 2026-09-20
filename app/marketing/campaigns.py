@@ -5,25 +5,29 @@ from __future__ import annotations
 CAMPAIGNS: dict[str, dict[str, dict[str, str]]] = {
     "novidades-mapa": {
         "pt-BR": {
-            "subject": "Novidade: escolha o local direto no mapa 📍",
-            "heading": "Selecione locais arrastando o mapa",
+            "subject": "Não sabe o endereço? Agora dá pra apontar no mapa 📍",
+            "heading": "Selecione o local direto no mapa",
             "body_html": (
-                "Agora você pode definir origem, destino ou paradas sem digitar o endereço: "
-                "toque no botão <strong>Mapa</strong>, arraste até o local exato e confirme. "
-                "Ideal para quando você sabe onde fica, mas não sabe o endereço de cor."
+                "Chegou uma forma nova de definir origem, destino ou parada: toque no botão "
+                "<strong>Mapa</strong>, arraste até o local certo e confirme — sem precisar "
+                "digitar ou lembrar o endereço exato."
+                "<br><br>"
+                "Funciona em qualquer lugar do app onde você informa um endereço."
             ),
-            "cta_label": "Testar agora",
+            "cta_label": "Testar no Rota Otimizada",
             "cta_url": "/",
         },
         "en-US": {
-            "subject": "New: pick a location right on the map 📍",
-            "heading": "Select locations by dragging the map",
+            "subject": "Don't know the address? Just point it on the map 📍",
+            "heading": "Pick a location right on the map",
             "body_html": (
-                "You can now set an origin, destination or stop without typing the address: "
-                "tap the <strong>Map</strong> button, drag to the exact spot and confirm. "
-                "Perfect for when you know the place but not the address."
+                "There's a new way to set an origin, destination or stop: tap the "
+                "<strong>Map</strong> button, drag to the right spot and confirm — no need "
+                "to type or remember the exact address."
+                "<br><br>"
+                "It works anywhere in the app where you'd normally type an address."
             ),
-            "cta_label": "Try it now",
+            "cta_label": "Try it on Find My Route",
             "cta_url": "/",
         },
     },
