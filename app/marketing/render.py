@@ -46,6 +46,11 @@ def render_campaign_email(campaign: dict[str, str], user_id: str) -> str:
     )
 
     return f"""
+    <style>
+      .header-domain-link, .header-domain-link:visited, .header-domain-link:hover {{
+        color: #ffffff !important;
+      }}
+    </style>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
            style="background:#f3f4f6;padding:2rem 0">
       <tr>
@@ -56,9 +61,11 @@ def render_campaign_email(campaign: dict[str, str], user_id: str) -> str:
               <td style="background:{_BRAND_COLOR};padding:1.75rem 2rem;text-align:center">
                 <img src="{settings.app_base_url}/{s['logo']}" width="36"
                      style="border-radius:8px;vertical-align:middle" alt="{s['brand']}" />
-                <span style="color:#fff;font-size:1.05rem;font-weight:700;vertical-align:middle;margin-left:.6rem">
+                <a href="{settings.app_base_url}/" class="header-domain-link"
+                   style="color:#ffffff !important;font-size:1.05rem;font-weight:700;
+                          vertical-align:middle;margin-left:.6rem;text-decoration:none">
                   {_domain()}
-                </span>
+                </a>
               </td>
             </tr>
             <tr>

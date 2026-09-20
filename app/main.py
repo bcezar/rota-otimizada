@@ -133,13 +133,19 @@ async def marketing_preview(slug: str):
     return Response(content=html, media_type="text/html")
 
 
-@app.get("/marketing/unsubscribe", include_in_schema=False)
-async def marketing_unsubscribe(request: Request, uid: str, sig: str):
+async def _apply_marketing_unsubscribe(uid: str, sig: str) -> bool:
     from app.marketing.render import unsubscribe_signature
 
     valid = bool(uid) and bool(sig) and hmac.compare_digest(unsubscribe_signature(uid), sig)
     if valid:
         await storage.set_marketing_opt_out(uid)
+    return valid
+
+
+@app.get("/marketing/unsubscribe", include_in_schema=False)
+async def marketing_unsubscribe(request: Request, uid: str, sig: str):
+    valid = await _apply_marketing_unsubscribe(uid, sig)
+    if valid:
         message_title = _i18n["marketing_unsubscribe_title"]
         message_body = _i18n["marketing_unsubscribe_body"]
     else:
@@ -152,6 +158,14 @@ async def marketing_unsubscribe(request: Request, uid: str, sig: str):
         "message_body": message_body,
         "i18n": _i18n,
     })
+
+
+@app.post("/marketing/unsubscribe", include_in_schema=False)
+async def marketing_unsubscribe_one_click(uid: str, sig: str):
+    """RFC 8058 one-click unsubscribe target: email clients POST here directly
+    (via the List-Unsubscribe-Post header) without loading any page."""
+    await _apply_marketing_unsubscribe(uid, sig)
+    return Response(status_code=200)
 
 
 @app.get("/conta")

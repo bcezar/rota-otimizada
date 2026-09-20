@@ -16,7 +16,7 @@ from app import storage
 from app.config import settings
 from app.i18n import get_strings
 from app.marketing.campaigns import get_campaign
-from app.marketing.render import render_campaign_email
+from app.marketing.render import render_campaign_email, unsubscribe_url
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -32,6 +32,10 @@ async def _send_one(recipient: dict, campaign: dict[str, str]) -> bool:
             "to": [recipient["email"]],
             "subject": campaign["subject"],
             "html": render_campaign_email(campaign, recipient["id"]),
+            "headers": {
+                "List-Unsubscribe": f"<{unsubscribe_url(recipient['id'])}>",
+                "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+            },
         })
         logger.info("sent to %s", recipient["email"])
         return True
