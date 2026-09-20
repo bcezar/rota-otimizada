@@ -354,15 +354,18 @@ async def get_user_by_id(user_id: str) -> dict | None:
 async def list_marketing_recipients() -> list[dict]:
     if _turso_configured():
         r = await _execute(
-            "SELECT id, email, name FROM users "
+            "SELECT id, email, name, signup_source FROM users "
             "WHERE marketing_opt_out IS NULL OR marketing_opt_out = 0 "
             "ORDER BY created_at ASC"
         )
         rows = r.get("rows", [])
-        return [{"id": _cell(row[0]), "email": _cell(row[1]), "name": _cell(row[2])} for row in rows]
+        return [
+            {"id": _cell(row[0]), "email": _cell(row[1]), "name": _cell(row[2]), "signup_source": _cell(row[3])}
+            for row in rows
+        ]
     # dict preserves insertion order, which mirrors created_at for the in-memory fallback
     return [
-        {"id": uid, "email": u["email"], "name": u.get("name")}
+        {"id": uid, "email": u["email"], "name": u.get("name"), "signup_source": u.get("signup_source")}
         for uid, u in _users.items()
         if not u.get("marketing_opt_out")
     ]

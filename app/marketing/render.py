@@ -8,36 +8,63 @@ from app.i18n import get_strings
 
 _BRAND_COLOR = "#1d4ed8"
 
+# Both PT and EN deploys share the same Turso database, but each runs from its own
+# .env (its own APP_BASE_URL/RESEND_FROM_EMAIL). A marketing send always runs from
+# a single environment, yet recipients span both locales (see users.signup_source),
+# so we need the base URL/from-email for a locale that may not match the running
+# deploy's own. These are public brand domains/addresses, not secrets, and only
+# change if a domain is retired — a single edit here beats keeping 4 env vars
+# in sync across both Railway services.
+_LOCALE_BASE_URLS = {
+    "pt-BR": "https://rotaotimizada.com.br",
+    "en-US": "https://findmyroute.com.br",
+}
+_LOCALE_FROM_EMAILS = {
+    "pt-BR": "noreply@rotaotimizada.com.br",
+    "en-US": "noreply@findmyroute.com.br",
+}
+
+
+def _base_url_for(locale: str) -> str:
+    return _LOCALE_BASE_URLS.get(locale, settings.app_base_url)
+
+
+def from_email_for(locale: str) -> str:
+    return _LOCALE_FROM_EMAILS.get(locale, settings.resend_from_email)
+
 
 def unsubscribe_signature(user_id: str) -> str:
     secret = settings.marketing_unsubscribe_secret or ""
     return hmac.new(secret.encode(), user_id.encode(), hashlib.sha256).hexdigest()[:32]
 
 
-def unsubscribe_url(user_id: str) -> str:
+def unsubscribe_url(user_id: str, locale: str) -> str:
     sig = unsubscribe_signature(user_id)
-    return f"{settings.app_base_url}/marketing/unsubscribe?uid={user_id}&sig={sig}"
+    return f"{_base_url_for(locale)}/marketing/unsubscribe?uid={user_id}&sig={sig}"
 
 
-def _abs_url(path: str) -> str:
-    return f"{settings.app_base_url}{path}" if path.startswith("/") else path
+def _abs_url(path: str, base_url: str) -> str:
+    return f"{base_url}{path}" if path.startswith("/") else path
 
 
-def _domain() -> str:
-    return settings.app_base_url.removeprefix("https://").removeprefix("http://").rstrip("/")
+def _domain(base_url: str) -> str:
+    return base_url.removeprefix("https://").removeprefix("http://").rstrip("/")
 
 
-def render_campaign_email(campaign: dict[str, str], user_id: str) -> str:
+def render_campaign_email(campaign: dict[str, str], user_id: str, locale: str) -> str:
     """Renders the full HTML body for a marketing campaign: colored header, white
     content card, CTA and a footer with institutional links + unsubscribe.
-    Built with tables/inline styles for email-client compatibility."""
-    s = get_strings(settings.locale)
-    cta_url = _abs_url(campaign["cta_url"])
+    Built with tables/inline styles for email-client compatibility.
+    `locale` picks the recipient's own language/domain, independent of the
+    environment the sending script happens to run in."""
+    s = get_strings(locale)
+    base_url = _base_url_for(locale)
+    cta_url = _abs_url(campaign["cta_url"], base_url)
 
     footer_links = [
-        (s["marketing_email_footer_contact"], _abs_url(s["marketing_email_footer_contact_href"])),
-        (s["marketing_email_footer_privacy"], _abs_url(s["marketing_email_footer_privacy_href"])),
-        (s["marketing_email_footer_terms"], _abs_url(s["marketing_email_footer_terms_href"])),
+        (s["marketing_email_footer_contact"], _abs_url(s["marketing_email_footer_contact_href"], base_url)),
+        (s["marketing_email_footer_privacy"], _abs_url(s["marketing_email_footer_privacy_href"], base_url)),
+        (s["marketing_email_footer_terms"], _abs_url(s["marketing_email_footer_terms_href"], base_url)),
         (s["marketing_email_footer_instagram"], s["marketing_email_footer_instagram_href"]),
     ]
     footer_links_html = " &nbsp;·&nbsp; ".join(
@@ -59,12 +86,12 @@ def render_campaign_email(campaign: dict[str, str], user_id: str) -> str:
                  style="max-width:480px;width:100%;background:#fff;border-radius:16px;overflow:hidden;font-family:system-ui,sans-serif">
             <tr>
               <td style="background:{_BRAND_COLOR};padding:1.75rem 2rem;text-align:center">
-                <img src="{settings.app_base_url}/{s['logo']}" width="36"
+                <img src="{base_url}/{s['logo']}" width="36"
                      style="border-radius:8px;vertical-align:middle" alt="{s['brand']}" />
-                <a href="{settings.app_base_url}/" class="header-domain-link"
+                <a href="{base_url}/" class="header-domain-link"
                    style="color:#ffffff !important;font-size:1.05rem;font-weight:700;
                           vertical-align:middle;margin-left:.6rem;text-decoration:none">
-                  {_domain()}
+                  {_domain(base_url)}
                 </a>
               </td>
             </tr>
@@ -96,7 +123,7 @@ def render_campaign_email(campaign: dict[str, str], user_id: str) -> str:
                   {footer_links_html}
                 </p>
                 <p style="font-size:.78rem;margin:0">
-                  <a href="{unsubscribe_url(user_id)}" style="color:#9ca3af;text-decoration:underline">
+                  <a href="{unsubscribe_url(user_id, locale)}" style="color:#9ca3af;text-decoration:underline">
                     {s['marketing_email_unsubscribe']}
                   </a>
                 </p>

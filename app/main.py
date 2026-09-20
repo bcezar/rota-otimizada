@@ -122,14 +122,14 @@ async def index(request: Request):
 
 
 @app.get("/marketing/preview/{slug}", include_in_schema=False)
-async def marketing_preview(slug: str):
+async def marketing_preview(slug: str, locale: str = settings.locale):
     from app.marketing.campaigns import get_campaign
     from app.marketing.render import render_campaign_email
 
-    campaign = get_campaign(slug, settings.locale)
+    campaign = get_campaign(slug, locale)
     if not campaign:
         raise HTTPException(status_code=404)
-    html = render_campaign_email(campaign, "preview-user-id")
+    html = render_campaign_email(campaign, "preview-user-id", locale)
     return Response(content=html, media_type="text/html")
 
 
