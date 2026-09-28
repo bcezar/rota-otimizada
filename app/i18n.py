@@ -79,16 +79,23 @@ _STRINGS: dict[str, dict] = {
 
         # Info banner
         "banner_title":     "A ordem será calculada automaticamente",
-        "banner_body":      "Defina início e destino (opcional) e adicione suas paradas.",
+        "banner_body":      "Se desejar, você pode definir o ponto de partida e o destino final.",
 
         # Origin / destination
         "origin_label":     "Ponto de partida (opcional)",
+        "origin_title":     "Ponto de partida",
         "origin_placeholder": "Ex.: Rua X, 123, Campinas/SP",
         "dest_label":       "Destino final (opcional)",
+        "dest_title":       "Destino final",
+        "endpoint_optional": "Opcional",
         "dest_placeholder": "Ex.: Depósito, Rua Y, 456, Campinas/SP",
         "use_same_origin":  "← Usar mesmo endereço da origem",
         "geo_btn":          "Localização",
         "map_pick_btn":     "Mapa",
+        "add_origin_btn":   "Adicionar Origem",
+        "add_dest_btn":     "Adicionar Destino",
+        "edit_endpoint_btn": "Editar",
+        "cancel_endpoint_btn": "Cancelar",
 
         # Pick location on map modal
         "pick_location_title":       "Escolher local no mapa",
@@ -571,16 +578,23 @@ _STRINGS: dict[str, dict] = {
 
         # Info banner
         "banner_title":     "The order will be calculated automatically",
-        "banner_body":      "Set start and destination (optional) and add your stops.",
+        "banner_body":      "If you want, you can set the starting point and final destination.",
 
         # Origin / destination
         "origin_label":     "Starting point (optional)",
+        "origin_title":     "Starting point",
         "origin_placeholder": "E.g.: 123 Oak Ave, Chicago, IL",
         "dest_label":       "Final destination (optional)",
+        "dest_title":       "Final destination",
+        "endpoint_optional": "Optional",
         "dest_placeholder": "E.g.: Warehouse, 456 Elm St, Chicago, IL",
         "use_same_origin":  "← Use same address as origin",
         "geo_btn":          "Location",
         "map_pick_btn":     "Map",
+        "add_origin_btn":   "Add Origin",
+        "add_dest_btn":     "Add Destination",
+        "edit_endpoint_btn": "Edit",
+        "cancel_endpoint_btn": "Cancel",
 
         # Pick location on map modal
         "pick_location_title":       "Choose location on map",

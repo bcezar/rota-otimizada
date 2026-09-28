@@ -298,6 +298,14 @@ function routeApp() {
       const v = this.destInput.trim();
       if (v) { this.dest = v; this.destSuggestions = []; this.setLocationHint(v); }
     },
+    editOrigin() {
+      this.originInput = this.origin;
+      this.origin = '';
+    },
+    editDest() {
+      this.destInput = this.dest;
+      this.dest = '';
+    },
 
     setLocationHint(address) {
       if (this.locationHint || !address) return;

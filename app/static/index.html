@@ -1039,7 +1039,7 @@
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M20 7h-9m9 5H8m12 5h-9M4 7h.01M4 12h.01M4 17h.01"/>
       </svg>
-      {{ i18n.added_addresses_title }} (<span x-text="addresses.length"></span>)
+      <span x-text="window.I18N.added_addresses_title + ' (' + addresses.length + ')'"></span>
     </div>
 
     <!-- Empty state placeholder -->
@@ -1225,74 +1225,110 @@
   <div class="section">
 
     <!-- Origin row -->
-    <div class="endpoint-row">
-      <div class="endpoint-icon icon-origin">▶</div>
-      <div class="endpoint-content">
-        <div class="endpoint-label">{{ i18n.origin_label }}</div>
-        <div class="input-wrap" x-show="origin === ''" x-ref="originWrap">
-          <input type="text" :placeholder="window.I18N.origin_placeholder"
-                 x-model="originInput"
-                 @input.debounce.400ms="fetchSuggestions('origin', originInput)"
-                 @keydown.escape="originSuggestions = []"
-                 @keydown.enter="setOrigin()" />
-          <ul class="suggestions" x-show="originSuggestions.length > 0" @click.outside="originSuggestions = []">
-            <template x-for="s in originSuggestions" :key="s">
-              <li @mousedown.prevent="originInput = s; originSuggestions = []; setOrigin()" x-text="s"></li>
-            </template>
-          </ul>
+    <div class="endpoint-row endpoint-row-stacked">
+      <div class="endpoint-row-head">
+        <div class="endpoint-icon icon-origin">▶</div>
+        <div class="endpoint-content">
+          <div class="endpoint-hero-text">
+            <div class="stops-title">{{ i18n.origin_title }}</div>
+            <div class="stops-subtitle">{{ i18n.endpoint_optional }}</div>
+          </div>
+          <div class="input-wrap input-wrap-with-icon" x-show="origin === ''" x-ref="originWrap">
+            <svg class="input-pin-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 21s-7-5.686-7-11a7 7 0 0 1 14 0c0 5.314-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>
+            </svg>
+            <input type="text" :placeholder="window.I18N.origin_placeholder"
+                   x-model="originInput"
+                   @input.debounce.400ms="fetchSuggestions('origin', originInput)"
+                   @keydown.escape="originSuggestions = []"
+                   @keydown.enter="setOrigin()" />
+            <ul class="suggestions" x-show="originSuggestions.length > 0" @click.outside="originSuggestions = []">
+              <template x-for="s in originSuggestions" :key="s">
+                <li @mousedown.prevent="originInput = s; originSuggestions = []; setOrigin()" x-text="s"></li>
+              </template>
+            </ul>
+          </div>
+          <span class="set-label" x-show="origin !== ''" x-text="origin"></span>
         </div>
-        <span class="set-label" x-show="origin !== ''" x-text="origin"></span>
       </div>
-      <div class="endpoint-actions">
-        <button class="btn btn-add" x-show="origin === ''" @click="setOrigin()" :disabled="originInput.trim() === ''">+</button>
-        <button class="btn btn-remove" x-show="origin !== ''" @click="origin = ''; originInput = ''; originSuggestions = []">−</button>
-        <button class="btn-geo" x-show="origin === ''" :disabled="geolocating" @click="geolocate()">
-          <img src="/my-location.svg" width="15" height="15" x-show="!geolocating" />
-          <span class="btn-geo-text" x-show="!geolocating">{{ i18n.geo_btn }}</span>
-          <span x-show="geolocating">…</span>
-        </button>
-        <button class="btn-map-pick" x-show="origin === ''" @click="openPickLocation('origin')">
+      <div class="endpoint-actions-stacked" x-show="origin === ''">
+        <button class="btn-endpoint-primary" @click="setOrigin()" :disabled="originInput.trim() === ''">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 21s-7-5.686-7-11a7 7 0 0 1 14 0c0 5.314-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
           </svg>
-          {{ i18n.map_pick_btn }}
+          {{ i18n.add_origin_btn }}
         </button>
+        <div class="endpoint-actions-split">
+          <button class="btn-geo" :disabled="geolocating" @click="geolocate()">
+            <img src="/my-location.svg" width="15" height="15" x-show="!geolocating" />
+            <span x-show="!geolocating">{{ i18n.geo_btn }}</span>
+            <span x-show="geolocating">…</span>
+          </button>
+          <button class="btn-map-pick" @click="openPickLocation('origin')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0 0 21 18.382V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7"/>
+            </svg>
+            {{ i18n.map_pick_btn_full }}
+          </button>
+        </div>
+      </div>
+      <div class="endpoint-actions-split" x-show="origin !== ''">
+        <button class="btn-endpoint-edit" @click="editOrigin()">{{ i18n.edit_endpoint_btn }}</button>
+        <button class="btn-endpoint-cancel" @click="origin = ''; originInput = ''; originSuggestions = []">{{ i18n.cancel_endpoint_btn }}</button>
       </div>
     </div>
 
     <div class="endpoint-divider"></div>
 
     <!-- Destination row -->
-    <div class="endpoint-row">
-      <div class="endpoint-icon icon-dest">⚑</div>
-      <div class="endpoint-content">
-        <div class="endpoint-label">{{ i18n.dest_label }}</div>
-        <div class="input-wrap" x-show="dest === ''">
-          <input type="text" :placeholder="window.I18N.dest_placeholder"
-                 x-model="destInput"
-                 @input.debounce.400ms="fetchSuggestions('dest', destInput)"
-                 @keydown.escape="destSuggestions = []"
-                 @keydown.enter="setDest()" />
-          <ul class="suggestions" x-show="destSuggestions.length > 0" @click.outside="destSuggestions = []">
-            <template x-for="s in destSuggestions" :key="s">
-              <li @mousedown.prevent="destInput = s; destSuggestions = []; setDest()" x-text="s"></li>
-            </template>
-          </ul>
+    <div class="endpoint-row endpoint-row-stacked">
+      <div class="endpoint-row-head">
+        <div class="endpoint-icon icon-dest">⚑</div>
+        <div class="endpoint-content">
+          <div class="endpoint-hero-text">
+            <div class="stops-title">{{ i18n.dest_title }}</div>
+            <div class="stops-subtitle">{{ i18n.endpoint_optional }}</div>
+          </div>
+          <div class="input-wrap input-wrap-with-icon" x-show="dest === ''">
+            <svg class="input-pin-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 21s-7-5.686-7-11a7 7 0 0 1 14 0c0 5.314-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>
+            </svg>
+            <input type="text" :placeholder="window.I18N.dest_placeholder"
+                   x-model="destInput"
+                   @input.debounce.400ms="fetchSuggestions('dest', destInput)"
+                   @keydown.escape="destSuggestions = []"
+                   @keydown.enter="setDest()" />
+            <ul class="suggestions" x-show="destSuggestions.length > 0" @click.outside="destSuggestions = []">
+              <template x-for="s in destSuggestions" :key="s">
+                <li @mousedown.prevent="destInput = s; destSuggestions = []; setDest()" x-text="s"></li>
+              </template>
+            </ul>
+          </div>
+          <span class="set-label" x-show="dest !== ''" x-text="dest"></span>
+          <button class="btn-copy-origin"
+                  x-show="origin !== '' && dest === ''"
+                  @click="destInput = origin; setDest()">{{ i18n.use_same_origin }}</button>
         </div>
-        <span class="set-label" x-show="dest !== ''" x-text="dest"></span>
-        <button class="btn-copy-origin"
-                x-show="origin !== '' && dest === ''"
-                @click="destInput = origin; setDest()">{{ i18n.use_same_origin }}</button>
       </div>
-      <div class="endpoint-actions">
-        <button class="btn btn-add" x-show="dest === ''" @click="setDest()" :disabled="destInput.trim() === ''">+</button>
-        <button class="btn btn-remove" x-show="dest !== ''" @click="dest = ''; destInput = ''; destSuggestions = []">−</button>
-        <button class="btn-map-pick" x-show="dest === ''" @click="openPickLocation('destination')">
+      <div class="endpoint-actions-stacked" x-show="dest === ''">
+        <button class="btn-endpoint-primary" @click="setDest()" :disabled="destInput.trim() === ''">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 21s-7-5.686-7-11a7 7 0 0 1 14 0c0 5.314-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
           </svg>
-          {{ i18n.map_pick_btn }}
+          {{ i18n.add_dest_btn }}
         </button>
+        <div class="endpoint-actions-split">
+          <button class="btn-map-pick btn-map-pick-full" @click="openPickLocation('destination')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0 0 21 18.382V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7"/>
+            </svg>
+            {{ i18n.map_pick_btn_full }}
+          </button>
+        </div>
+      </div>
+      <div class="endpoint-actions-split" x-show="dest !== ''">
+        <button class="btn-endpoint-edit" @click="editDest()">{{ i18n.edit_endpoint_btn }}</button>
+        <button class="btn-endpoint-cancel" @click="dest = ''; destInput = ''; destSuggestions = []">{{ i18n.cancel_endpoint_btn }}</button>
       </div>
     </div>
 

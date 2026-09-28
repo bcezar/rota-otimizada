@@ -150,6 +150,39 @@ body {
 }
 .endpoint-divider { height: 1px; background: #f3f4f6; margin: .85rem 0; }
 
+.endpoint-row-stacked { flex-direction: column; align-items: stretch; }
+.endpoint-row-head { display: flex; align-items: flex-start; gap: .6rem; }
+.endpoint-hero-text { margin-bottom: .5rem; }
+.endpoint-hero-text .stops-title { font-size: .95rem; }
+.endpoint-actions-stacked { display: flex; flex-direction: column; gap: .5rem; margin-top: .7rem; }
+.endpoint-actions-split { display: flex; gap: .5rem; }
+.endpoint-actions-split > * { flex: 1; }
+
+.btn-endpoint-primary {
+  display: flex; align-items: center; justify-content: center; gap: .4rem;
+  width: 100%; padding: .65rem;
+  background: #1d4ed8; color: #fff;
+  border: none; border-radius: 8px;
+  font-size: .9rem; font-weight: 700; cursor: pointer;
+  transition: background .15s;
+}
+.btn-endpoint-primary:hover:not(:disabled) { background: #1e40af; }
+.btn-endpoint-primary:disabled { background: #93c5fd; cursor: default; }
+
+.btn-endpoint-edit, .btn-endpoint-cancel {
+  padding: .6rem; border-radius: 8px;
+  font-size: .88rem; font-weight: 700; cursor: pointer;
+  transition: background .15s;
+}
+.btn-endpoint-edit {
+  background: #eff6ff; color: #1d4ed8; border: 1.5px solid #bfdbfe;
+}
+.btn-endpoint-edit:hover { background: #dbeafe; }
+.btn-endpoint-cancel {
+  background: #fee2e2; color: #b91c1c; border: 1.5px solid #fecaca;
+}
+.btn-endpoint-cancel:hover { background: #fecaca; }
+
 .set-label {
   display: inline-block;
   margin-top: .3rem;
@@ -222,13 +255,13 @@ input[type="text"]:disabled { background: #f9fafb; color: #9ca3af; cursor: defau
 
 .btn-geo {
   padding: .44rem .6rem;
-  background: #f3f4f6; color: #374151;
-  border: 1.5px solid #e5e7eb; border-radius: 8px;
+  background: #e0f2fe; color: #0369a1;
+  border: 1.5px solid #bae6fd; border-radius: 8px;
   font-size: .82rem; cursor: pointer; line-height: 1;
   transition: background .15s; white-space: nowrap;
   display: flex; align-items: center; gap: .35rem; flex-shrink: 0;
 }
-.btn-geo:hover:not(:disabled) { background: #e5e7eb; }
+.btn-geo:hover:not(:disabled) { background: #bae6fd; }
 .btn-geo:disabled { opacity: .5; cursor: default; }
 @media (max-width: 480px) { .btn-geo-text { display: none; } }
 
@@ -241,6 +274,10 @@ input[type="text"]:disabled { background: #f9fafb; color: #9ca3af; cursor: defau
   display: flex; align-items: center; gap: .35rem; flex-shrink: 0;
 }
 .btn-map-pick:hover { background: #dbeafe; }
+.endpoint-actions-split .btn-map-pick,
+.endpoint-actions-split .btn-geo {
+  justify-content: center; padding: .6rem; font-size: .88rem; white-space: normal;
+}
 
 /* === PICK LOCATION ON MAP === */
 .pick-location-overlay {
