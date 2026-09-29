@@ -1368,7 +1368,10 @@ tr.sp td{font-weight:bold;background:#eef2ff}
       const count = (parseInt(localStorage.getItem('optSuccessCount') || '0', 10)) + 1;
       localStorage.setItem('optSuccessCount', String(count));
       if (count === 2) {
-        setTimeout(() => { this.feedbackOpen = true; }, 2000);
+        setTimeout(() => {
+          this.feedbackOpen = true;
+          this._track('feedback_shown');
+        }, 2000);
       }
     },
 
@@ -1398,10 +1401,12 @@ tr.sp td{font-weight:bold;background:#eef2ff}
     },
 
     closeFeedback() {
+      if (!this.feedbackDone) this._track('feedback_closed');
       this.feedbackOpen = false;
     },
 
     dismissFeedback() {
+      this._track('feedback_dismissed');
       localStorage.setItem('feedbackDismissed', 'true');
       this.feedbackOpen = false;
     },
