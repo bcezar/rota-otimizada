@@ -333,7 +333,7 @@ function routeApp() {
       const v = this.newAddress.trim();
       if (v) {
         this.addresses.push({ address: v, description: this.newDescription.trim() });
-        this._track('stop_added', { total_stops: this.addresses.length });
+        this._track('stop_added', { total_stops: this.addresses.length, source: 'manual' });
         this.setLocationHint(v);
         this.newAddress = '';
         this.newDescription = '';
