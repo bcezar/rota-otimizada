@@ -848,6 +848,15 @@
                 </svg>
                 {{ i18n.user_signin }}
               </button>
+              <div class="user-menu-divider"></div>
+              <a href="{{ i18n.user_plans_link_href }}" class="user-menu-item" style="text-decoration:none"
+                 @click="userMenuOpen = false">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2l2.39 7.26H22l-6.18 4.49 2.36 7.25L12 16.5l-6.18 4.5 2.36-7.25L2 9.26h7.61z"/>
+                </svg>
+                {{ i18n.user_plans_link }}
+              </a>
             </div>
           </template>
           <template x-if="user">

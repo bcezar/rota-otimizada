@@ -410,7 +410,7 @@ _STRINGS: dict[str, dict] = {
         # Drawer / user menu — plans page link
         "drawer_plans":      "Conheça nossos planos",
         "drawer_plans_href": "/nossos-planos",
-        "user_plans_link":      "Ver todos os planos",
+        "user_plans_link":      "Conhecer planos",
         "user_plans_link_href": "/nossos-planos",
 
         # nossos-planos.html (SEO)
