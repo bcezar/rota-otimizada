@@ -773,6 +773,10 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
         {{ i18n.drawer_csv_template }}
       </li>
+      <li class="drawer-item" @click="window.location.href='{{ i18n.drawer_plans_href }}'; drawerOpen = false">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
+        {{ i18n.drawer_plans }}
+      </li>
 
       <li class="drawer-divider"></li>
 
@@ -860,6 +864,7 @@
                   <span class="user-menu-soon">{{ i18n.user_upgrade_desc }}</span>
                 </button>
               </template>
+              <a href="{{ i18n.user_plans_link_href }}" class="user-menu-item" style="text-decoration:none">{{ i18n.user_plans_link }}</a>
               <template x-if="user.is_pro && user.is_exclusive">
                 <button class="user-menu-item user-menu-item-disabled">
                   {{ i18n.user_exclusive_active }}

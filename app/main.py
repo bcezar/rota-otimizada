@@ -224,6 +224,11 @@ _SEO_PAGES_PT: dict[str, dict[str, str]] = {
         "description": "Como o Rota Otimizada coleta, usa e protege seus dados pessoais.",
         "template": "privacidade.html",
     },
+    "nossos-planos": {
+        "title": "Conheça Nossos Planos e Preços — Rota Otimizada",
+        "description": "Compare os planos Free e Pro do Rota Otimizada: paradas por rota, otimizações diárias e rotas salvas. Veja qual plano é ideal para você.",
+        "template": "nossos-planos.html",
+    },
 }
 
 _SEO_PAGES_EN: dict[str, dict[str, str]] = {
@@ -271,6 +276,11 @@ _SEO_PAGES_EN: dict[str, dict[str, str]] = {
         "title": "Privacy Policy — Find My Route",
         "description": "How Find My Route collects, uses, and protects your personal data.",
         "template": "privacy-policy.html",
+    },
+    "our-plans": {
+        "title": "See Our Plans and Pricing — Find My Route",
+        "description": "Compare Find My Route's Free and Pro plans: stops per route, daily optimizations, and saved routes. Find the right plan for you.",
+        "template": "our-plans.html",
     },
 }
 

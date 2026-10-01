@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="seo-hero">
+  <h1>{{ i18n.plans_hero_title }}</h1>
+  <p>{{ i18n.plans_hero_sub }}</p>
+</div>
+
+<div class="seo-section">
+  <div class="seo-plans-table">
+    <div class="seo-plan-card">
+      <div class="seo-plan-name">{{ i18n.plans_anon_name }}</div>
+      <div class="seo-plan-price">{{ i18n.plans_anon_price }}</div>
+      <ul class="seo-plan-features">
+        <li>{{ i18n.plans_anon_feature1 }}</li>
+        <li>{{ i18n.plans_anon_feature2 }}</li>
+        <li>{{ i18n.plans_anon_feature3 }}</li>
+      </ul>
+      <a href="/" class="seo-plan-cta" onclick="if(typeof gtag==='function')gtag('event','cta_clicked',{page:'nossos-planos'})">{{ i18n.plans_anon_cta }}</a>
+    </div>
+
+    <div class="seo-plan-card">
+      <div class="seo-plan-name">{{ i18n.plans_free_name }}</div>
+      <div class="seo-plan-price">{{ i18n.plans_free_price }}</div>
+      <ul class="seo-plan-features">
+        <li>{{ i18n.plans_free_feature1 }}</li>
+        <li>{{ i18n.plans_free_feature2 }}</li>
+        <li>{{ i18n.plans_free_feature3 }}</li>
+      </ul>
+      <a href="/" class="seo-plan-cta" onclick="if(typeof gtag==='function')gtag('event','cta_clicked',{page:'nossos-planos'})">{{ i18n.plans_free_cta }}</a>
+    </div>
+
+    <div class="seo-plan-card seo-plan-card-highlight">
+      <div class="seo-plan-name">{{ i18n.plans_pro_name }}</div>
+      <div class="seo-plan-price">{{ i18n.pro_price_label }}</div>
+      <ul class="seo-plan-features">
+        <li>{{ i18n.plans_pro_feature1 }}</li>
+        <li>{{ i18n.plans_pro_feature2 }}</li>
+        <li>{{ i18n.plans_pro_feature3 }}</li>
+      </ul>
+      <a href="/" class="seo-plan-cta seo-plan-cta-green" onclick="if(typeof gtag==='function')gtag('event','cta_clicked',{page:'nossos-planos'})">{{ i18n.plans_pro_cta }}</a>
+    </div>
+  </div>
+</div>
+
+<div class="seo-section">
+  <h2>{{ i18n.plans_table_title }}</h2>
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+    <thead>
+      <tr style="border-bottom:1.5px solid #e5e7eb">
+        <th style="text-align:left;padding:.5rem .4rem;color:#111">{{ i18n.plans_table_col_feature }}</th>
+        <th style="text-align:center;padding:.5rem .4rem;color:#111">{{ i18n.plans_anon_name }}</th>
+        <th style="text-align:center;padding:.5rem .4rem;color:#111">{{ i18n.plans_free_name }}</th>
+        <th style="text-align:center;padding:.5rem .4rem;color:#16a34a">{{ i18n.plans_pro_name }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom:1px solid #f3f4f6">
+        <td style="padding:.5rem .4rem;color:#374151">{{ i18n.plans_table_row_stops }}</td>
+        <td style="text-align:center;padding:.5rem .4rem;color:#374151">{{ i18n.plans_table_val_5 }}</td>
+        <td style="text-align:center;padding:.5rem .4rem;color:#374151">{{ i18n.plans_table_val_5 }}</td>
+        <td style="text-align:center;padding:.5rem .4rem;color:#374151">{{ i18n.plans_table_val_50 }}</td>
+      </tr>
+      <tr style="border-bottom:1px solid #f3f4f6">
+        <td style="padding:.5rem .4rem;color:#374151">{{ i18n.plans_table_row_opts }}</td>
+        <td style="text-align:center;padding:.5rem .4rem;color:#374151">{{ i18n.plans_table_val_5 }}</td>
+        <td style="text-align:center;padding:.5rem .4rem;color:#374151">{{ i18n.plans_table_val_unlimited }}</td>
+        <td style="text-align:center;padding:.5rem .4rem;color:#374151">{{ i18n.plans_table_val_unlimited }}</td>
+      </tr>
+      <tr>
+        <td style="padding:.5rem .4rem;color:#374151">{{ i18n.plans_table_row_save }}</td>
+        <td style="text-align:center;padding:.5rem .4rem;color:#374151">{{ i18n.plans_table_val_no }}</td>
+        <td style="text-align:center;padding:.5rem .4rem;color:#374151">{{ i18n.plans_table_val_yes }}</td>
+        <td style="text-align:center;padding:.5rem .4rem;color:#374151">{{ i18n.plans_table_val_yes }}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="seo-section">
+  <h2>{{ i18n.plans_faq_title }}</h2>
+  <div class="seo-faq-item">
+    <div class="seo-faq-q">{{ i18n.plans_faq_q1 }}</div>
+    <div class="seo-faq-a">{{ i18n.plans_faq_a1 }}</div>
+  </div>
+  <div class="seo-faq-item">
+    <div class="seo-faq-q">{{ i18n.plans_faq_q2 }}</div>
+    <div class="seo-faq-a">{{ i18n.plans_faq_a2 }}</div>
+  </div>
+  <div class="seo-faq-item">
+    <div class="seo-faq-q">{{ i18n.plans_faq_q3 }}</div>
+    <div class="seo-faq-a">{{ i18n.plans_faq_a3 }}</div>
+  </div>
+</div>
+
+<a href="/" onclick="if(typeof gtag==='function')gtag('event','cta_clicked',{page:'nossos-planos'})" class="seo-cta seo-cta-green">Otimizar minha rota agora →</a>
+{% endblock %}
+
+{% block schema %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Preciso de cartão de crédito para usar o plano gratuito?",
+      "acceptedAnswer": {"@type": "Answer", "text": "Não. Você pode otimizar rotas de até 5 paradas sem se cadastrar e sem informar nenhum dado de pagamento."}
+    },
+    {
+      "@type": "Question",
+      "name": "Qual a diferença entre visitante e cadastrado (Free)?",
+      "acceptedAnswer": {"@type": "Answer", "text": "Ambos têm o mesmo limite de 5 paradas por rota. A diferença é que o visitante tem um limite de 5 otimizações por dia, enquanto o usuário cadastrado otimiza quantas vezes quiser e ainda pode salvar suas rotas para acessar depois."}
+    },
+    {
+      "@type": "Question",
+      "name": "Posso cancelar o plano Pro quando quiser?",
+      "acceptedAnswer": {"@type": "Answer", "text": "Sim, o cancelamento pode ser feito a qualquer momento na sua página de conta, sem multa ou burocracia."}
+    }
+  ]
+}
+</script>
+{% endblock %}

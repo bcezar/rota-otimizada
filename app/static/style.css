@@ -1700,3 +1700,24 @@ input[type="text"]:disabled { background: #f9fafb; color: #9ca3af; cursor: defau
   color: #6b7280;
   text-align: center;
 }
+
+/* === SEO PLANS COMPARISON TABLE === */
+.seo-plans-table { display: flex; flex-direction: column; gap: .75rem; }
+.seo-plan-card {
+  border: 1.5px solid #e5e7eb; border-radius: 12px; padding: 1rem;
+  display: flex; flex-direction: column; gap: .5rem;
+}
+.seo-plan-card-highlight { border-color: #16a34a; background: #f0fdf4; }
+.seo-plan-name { font-size: .98rem; font-weight: 800; color: #111; display: flex; align-items: center; gap: .4rem; }
+.seo-plan-price { font-size: .85rem; font-weight: 700; color: #16a34a; }
+.seo-plan-features { padding-left: 1.1rem; display: flex; flex-direction: column; gap: .25rem; margin: 0; }
+.seo-plan-features li { font-size: .85rem; color: #374151; line-height: 1.55; }
+.seo-plan-cta {
+  margin-top: .3rem; display: inline-block; text-align: center;
+  background: #1d4ed8; color: #fff; border-radius: 10px;
+  padding: .55rem 1rem; font-size: .85rem; font-weight: 700;
+  text-decoration: none; transition: background .15s;
+}
+.seo-plan-cta:hover { background: #1e40af; }
+.seo-plan-cta-green { background: #16a34a; }
+.seo-plan-cta-green:hover { background: #15803d; }
