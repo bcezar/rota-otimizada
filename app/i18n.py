@@ -45,7 +45,7 @@ _STRINGS: dict[str, dict] = {
         "add_stop_placeholder": "Ex: Av. Paulista, 1000, São Paulo/SP",
         "add_stop_desc_placeholder": "Descrição (opcional) — ex: Farmácia do João",
         "add_stop_save":    "Salvar",
-        "add_stop_save_full": "Adicionar Endereço",
+        "add_stop_save_full": "Adicionar",
         "add_stop_cancel":  "Cancelar",
         "map_pick_btn_full": "Escolher no mapa",
         "added_addresses_title": "Endereços Adicionados",
