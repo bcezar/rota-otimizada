@@ -519,7 +519,7 @@ _STRINGS: dict[str, dict] = {
         "welcome_email_heading_exclusive": "Você agora é Exclusive!",
         "welcome_email_body_exclusive":    "Seu cupom foi aplicado. Durante o primeiro mês você pode otimizar rotas com até <strong>100 paradas</strong> e otimizações ilimitadas.",
         "welcome_email_cta":               "Ir para o Rota Otimizada",
-        "welcome_email_footer":            "Dúvidas? É só responder este e-mail ou usar a seção 'Fale conosco' no app.",
+        "welcome_email_footer":            "Dúvidas? Escreva para suporte@rotaotimizada.com.br ou use a seção 'Fale conosco' no app.",
 
         # email (marketing)
         "marketing_email_badge":           "✦ NOVIDADE",
@@ -1061,7 +1061,7 @@ _STRINGS: dict[str, dict] = {
         "welcome_email_heading_exclusive": "You're now Exclusive!",
         "welcome_email_body_exclusive":    "Your coupon has been applied. During your first month you can optimize routes with up to <strong>100 stops</strong> and unlimited optimizations.",
         "welcome_email_cta":               "Go to Find My Route",
-        "welcome_email_footer":            "Questions? Just reply to this email or use the 'Contact us' section in the app.",
+        "welcome_email_footer":            "Questions? Email support@findmyroute.com.br or use the 'Contact us' section in the app.",
 
         # email (marketing)
         "marketing_email_badge":           "✦ NEW FEATURE",
