@@ -278,6 +278,23 @@ input[type="text"]:disabled { background: #f9fafb; color: #9ca3af; cursor: defau
   justify-content: center; padding: .6rem; font-size: .88rem; white-space: normal;
 }
 
+.input-wrap-with-voice input[type="text"] { padding-right: 2.3rem; }
+.input-voice-icon-btn {
+  position: absolute; right: .4rem; top: 50%; transform: translateY(-50%);
+  width: 26px; height: 26px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent; color: #9ca3af;
+  border: none; border-radius: 50%; cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.input-voice-icon-btn:hover:not(:disabled) { background: #f5f3ff; color: #7c3aed; }
+.input-voice-icon-btn-active { background: #f5f3ff; color: #7c3aed; animation: voice-pulse 1.2s ease-in-out infinite; }
+.input-voice-icon-btn:disabled { cursor: default; }
+@keyframes voice-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(124, 58, 237, .25); }
+  50% { box-shadow: 0 0 0 5px rgba(124, 58, 237, .12); }
+}
+
 /* === PICK LOCATION ON MAP === */
 .pick-location-overlay {
   position: fixed; inset: 0; z-index: 600;

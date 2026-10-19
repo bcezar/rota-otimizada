@@ -1000,7 +1000,7 @@
     <!-- Add address input (always visible) -->
     <div>
       <div class="add-input-row">
-        <div class="input-wrap input-wrap-with-icon">
+        <div class="input-wrap input-wrap-with-icon input-wrap-with-voice">
           <svg class="input-pin-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 21s-7-5.686-7-11a7 7 0 0 1 14 0c0 5.314-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>
           </svg>
@@ -1010,6 +1010,16 @@
                  @input.debounce.400ms="fetchSuggestions('address', newAddress)"
                  @keydown.escape="addressSuggestions = []"
                  @keydown.enter="addAddress()" />
+          <button type="button" class="input-voice-icon-btn" :class="{ 'input-voice-icon-btn-active': voiceListening }"
+                  :disabled="voiceListening" @click="startVoiceInput()"
+                  :aria-label="voiceListening ? window.I18N.voice_input_listening : window.I18N.voice_input_btn"
+                  :title="voiceListening ? window.I18N.voice_input_listening : window.I18N.voice_input_btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+            </svg>
+          </button>
           <ul class="suggestions" x-show="addressSuggestions.length > 0" @click.outside="addressSuggestions = []">
             <template x-for="s in addressSuggestions" :key="s">
               <li @mousedown.prevent="newAddress = s; addressSuggestions = []" x-text="s"></li>

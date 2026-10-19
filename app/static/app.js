@@ -46,6 +46,7 @@ function routeApp() {
     contactDone:        false,
     contactError:       '',
     geolocating:    false,
+    voiceListening: false,
     copied:         false,
     shared:         false,
     saved:          false,
@@ -924,6 +925,38 @@ function routeApp() {
           this.geolocating = false;
         }
       );
+    },
+
+    startVoiceInput() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        this.error = window.I18N.err_voice_unsupported;
+        return;
+      }
+      this.voiceListening = true;
+      this.error = '';
+      this._track('voice_input_opened', { field: 'stop' });
+
+      const recognition = new SpeechRecognition();
+      recognition.lang = window.I18N.lang;
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onresult = (e) => {
+        const transcript = e.results[0][0].transcript;
+        this.newAddress = transcript;
+        this.fetchSuggestions('address', transcript);
+        this._track('voice_input_recognized', { field: 'stop' });
+      };
+      recognition.onerror = (e) => {
+        this.error = e.error === 'not-allowed' || e.error === 'permission-denied'
+          ? window.I18N.err_voice_denied
+          : window.I18N.err_voice_no_match;
+        this._track('voice_input_error', { field: 'stop', reason: e.error });
+      };
+      recognition.onend = () => { this.voiceListening = false; };
+
+      recognition.start();
     },
 
     async _getPickLocationCenter() {
