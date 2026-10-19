@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Annotated, Optional
+from typing import Annotated, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -97,3 +97,21 @@ class FeedbackRequest(BaseModel):
 class ContactRequest(BaseModel):
     email: str = Field(..., min_length=3, max_length=200)
     message: str = Field(..., min_length=1, max_length=2000)
+
+
+class UserPreferences(BaseModel):
+    default_origin: Optional[Address] = None
+    default_destination: Optional[Address] = None
+    destination_mode: Literal["return_to_origin", "custom", "none"] = "none"
+    navigation_app: Literal["ask_always", "google_maps", "waze", "apple_maps"] = "ask_always"
+    distance_unit: Literal["km", "mi"] = "km"
+    vehicle_type: Literal["car", "truck", "motorcycle", "bicycle"] = "car"
+
+
+class UpdatePreferencesRequest(BaseModel):
+    default_origin: Optional[Address] = None
+    default_destination: Optional[Address] = None
+    destination_mode: Optional[Literal["return_to_origin", "custom", "none"]] = None
+    navigation_app: Optional[Literal["ask_always", "google_maps", "waze", "apple_maps"]] = None
+    distance_unit: Optional[Literal["km", "mi"]] = None
+    vehicle_type: Optional[Literal["car", "truck", "motorcycle", "bicycle"]] = None

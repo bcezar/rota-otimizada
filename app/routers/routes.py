@@ -14,7 +14,7 @@ from app.limiter import limiter
 from app.models import (
     ContactRequest, Coordinates, FeedbackRequest, LoginRequest, LoginResponse, MagicRequestBody,
     MagicRequestResponse, MapImageRequest, OriginInfo, PolylineRequest, RouteRequest, RouteResponse,
-    RouteStop, SaveRouteRequest, UserResponse,
+    RouteStop, SaveRouteRequest, UpdatePreferencesRequest, UserPreferences, UserResponse,
 )
 from app.services import directions, distance, geocoding, optimizer, static_maps
 
@@ -67,6 +67,22 @@ async def logout(request: Request):
 async def me(request: Request):
     user = await _require_auth(request)
     return _user_response(user)
+
+
+# ── User preferences ──────────────────────────────────────────────────────────
+
+@router.get("/users/preferences", response_model=UserPreferences)
+async def get_preferences(request: Request):
+    user = await _require_auth(request)
+    return await storage.get_user_preferences(user["id"])
+
+
+@router.put("/users/preferences", response_model=UserPreferences)
+async def update_preferences(request: Request, body: UpdatePreferencesRequest = Body(...)):
+    user = await _require_auth(request)
+    fields = body.model_dump(exclude_unset=True)
+    await storage.update_user_preferences(user["id"], fields)
+    return await storage.get_user_preferences(user["id"])
 
 
 # ── Auth: Magic Link ──────────────────────────────────────────────────────────

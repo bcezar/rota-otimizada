@@ -151,6 +151,12 @@ async def init_db() -> None:
     await _execute("ALTER TABLE users ADD COLUMN signup_source TEXT", ignore_error=True)
     await _execute("ALTER TABLE users ADD COLUMN exclusive_until TEXT", ignore_error=True)
     await _execute("ALTER TABLE users ADD COLUMN marketing_opt_out INTEGER DEFAULT 0", ignore_error=True)
+    await _execute("ALTER TABLE users ADD COLUMN default_origin TEXT", ignore_error=True)
+    await _execute("ALTER TABLE users ADD COLUMN default_destination TEXT", ignore_error=True)
+    await _execute("ALTER TABLE users ADD COLUMN destination_mode TEXT", ignore_error=True)
+    await _execute("ALTER TABLE users ADD COLUMN navigation_app TEXT", ignore_error=True)
+    await _execute("ALTER TABLE users ADD COLUMN distance_unit TEXT", ignore_error=True)
+    await _execute("ALTER TABLE users ADD COLUMN vehicle_type TEXT", ignore_error=True)
 
 
 # ── Short links ─────────────────────────────────────────────────────────────
@@ -581,6 +587,53 @@ async def get_user_by_stripe_customer(customer_id: str) -> Optional[dict]:
         if user.get("stripe_customer_id") == customer_id:
             return user
     return None
+
+
+# ── User preferences ─────────────────────────────────────────────────────────
+
+_PREFERENCES_DEFAULTS = {
+    "default_origin": None,
+    "default_destination": None,
+    "destination_mode": "none",
+    "navigation_app": "ask_always",
+    "distance_unit": "km",
+    "vehicle_type": "car",
+}
+
+_PREFERENCES_COLUMNS = list(_PREFERENCES_DEFAULTS.keys())
+
+
+async def get_user_preferences(user_id: str) -> dict:
+    if _turso_configured():
+        r = await _execute(
+            f"SELECT {', '.join(_PREFERENCES_COLUMNS)} FROM users WHERE id = ?",
+            [user_id],
+        )
+        rows = r.get("rows", [])
+        if not rows:
+            return dict(_PREFERENCES_DEFAULTS)
+        row = rows[0]
+        return {
+            col: (_cell(row[i]) if _cell(row[i]) is not None else _PREFERENCES_DEFAULTS[col])
+            for i, col in enumerate(_PREFERENCES_COLUMNS)
+        }
+    user = _users.get(user_id, {})
+    return {col: user.get(col) if user.get(col) is not None else _PREFERENCES_DEFAULTS[col]
+            for col in _PREFERENCES_COLUMNS}
+
+
+async def update_user_preferences(user_id: str, fields: dict) -> None:
+    """fields: dict apenas com as chaves a atualizar (update parcial)."""
+    if not fields:
+        return
+    if _turso_configured():
+        set_clause = ", ".join(f"{col} = ?" for col in fields)
+        await _execute(
+            f"UPDATE users SET {set_clause} WHERE id = ?",
+            [*fields.values(), user_id],
+        )
+    elif user_id in _users:
+        _users[user_id].update(fields)
 
 
 # ── Geocoding cache ──────────────────────────────────────────────────────────
