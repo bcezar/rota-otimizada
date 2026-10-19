@@ -9,6 +9,14 @@ function routeApp() {
     fixedLast:   null,
     showAddInput:    false,
     helpOpen:        false,
+    originSectionVisible: true,
+    destSectionVisible:   true,
+    defaultsOpen:        false,
+    defaultsSaving:      false,
+    defaultsError:       '',
+    defaultOriginInput: '', defaultOrigin: '', defaultOriginSuggestions: [],
+    defaultDestInput:   '', defaultDestination: '', defaultDestSuggestions: [],
+    preferences:         null,
     drawerOpen:      false,
     userMenuOpen:    false,
     user:            null,
@@ -136,6 +144,7 @@ function routeApp() {
               if (userData) {
                 this.user = userData;
                 localStorage.setItem('routeSession', JSON.stringify({ token: s.token, user: userData }));
+                this.loadPreferences();
               }
             })
             .catch(() => {});
@@ -150,6 +159,8 @@ function routeApp() {
 
       if (localStorage.getItem('howToSeen') === '1') this.howToVisible  = false;
       if (localStorage.getItem('swipeHintSeen') === '1') this.swipeHintSeen = true;
+      if (localStorage.getItem('originSectionHidden') === '1') this.originSectionVisible = false;
+      if (localStorage.getItem('destSectionHidden') === '1') this.destSectionVisible = false;
 
       // Load anon optimization counter (resets daily)
       const today = new Date().toISOString().slice(0, 10);
@@ -185,6 +196,7 @@ function routeApp() {
             this._authToken = sessionToken;
             this.user = userData;
             localStorage.setItem('routeSession', JSON.stringify({ token: sessionToken, user: userData }));
+            this.loadPreferences();
           })
           .catch(err => {
             console.error('[auth] session callback error:', err);
@@ -306,6 +318,62 @@ function routeApp() {
     editDest() {
       this.destInput = this.dest;
       this.dest = '';
+    },
+
+    setDefaultOrigin() {
+      const v = this.defaultOriginInput.trim();
+      if (v) { this.defaultOrigin = v; this.defaultOriginSuggestions = []; }
+    },
+    setDefaultDest() {
+      const v = this.defaultDestInput.trim();
+      if (v) { this.defaultDestination = v; this.defaultDestSuggestions = []; }
+    },
+
+    async loadPreferences() {
+      if (!this._authToken) return;
+      try {
+        const res = await fetch('/api/v1/users/preferences', {
+          headers: { Authorization: `Bearer ${this._authToken}` },
+        });
+        if (!res.ok) return;
+        this.preferences = await res.json();
+      } catch (_) {}
+    },
+
+    openDefaultsModal(focus) {
+      if (!this.user) { this.loginOpen = true; return; }
+      this._track('defaults_modal_opened', { focus });
+      const prefs = this.preferences || {};
+      this.defaultOrigin      = prefs.default_origin || '';
+      this.defaultDestination = prefs.default_destination || '';
+      this.defaultOriginInput = '';
+      this.defaultDestInput   = '';
+      this.defaultOriginSuggestions = [];
+      this.defaultDestSuggestions   = [];
+      this.defaultsError = '';
+      this.defaultsOpen  = true;
+    },
+
+    async saveDefaults() {
+      this.defaultsSaving = true;
+      this.defaultsError  = '';
+      try {
+        const res = await fetch('/api/v1/users/preferences', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this._authToken}` },
+          body: JSON.stringify({
+            default_origin: this.defaultOrigin || null,
+            default_destination: this.defaultDestination || null,
+          }),
+        });
+        if (!res.ok) throw new Error();
+        this.preferences = await res.json();
+        this.defaultsOpen = false;
+      } catch (_) {
+        this.defaultsError = window.I18N.defaults_save_error;
+      } finally {
+        this.defaultsSaving = false;
+      }
     },
 
     setLocationHint(address) {
@@ -779,6 +847,7 @@ function routeApp() {
       this._authToken = null;
       this.user = null;
       this.myRoutes = [];
+      this.preferences = null;
       localStorage.removeItem('routeSession');
       this.userMenuOpen = false;
     },

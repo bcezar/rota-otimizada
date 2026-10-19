@@ -418,6 +418,17 @@ _STRINGS: dict[str, dict] = {
         "user_plans_link":      "Conhecer planos",
         "user_plans_link_href": "/nossos-planos",
 
+        # Drawer — default origin/destination
+        "drawer_default_origin":      "Início Padrão",
+        "drawer_default_destination": "Fim Padrão",
+        "defaults_modal_title":    "Endereços Padrão",
+        "defaults_modal_subtitle": "Defina um início e um fim padrão para usar automaticamente nas próximas rotas.",
+        "defaults_save_btn":   "Salvar",
+        "defaults_saving_btn": "Salvando…",
+        "defaults_save_error": "Erro ao salvar. Tente novamente.",
+        "hide_section_btn": "Ocultar seção",
+        "show_section_btn": "Exibir seção",
+
         # nossos-planos.html (SEO)
         "plans_hero_title": "Conheça Nossos Planos",
         "plans_hero_sub": "Compare os níveis de uso do Rota Otimizada — de visitante a assinante Pro — e escolha o que faz sentido para o seu dia a dia.",
@@ -964,6 +975,17 @@ _STRINGS: dict[str, dict] = {
         "drawer_plans_href": "/our-plans",
         "user_plans_link":      "See all plans",
         "user_plans_link_href": "/our-plans",
+
+        # Drawer — default origin/destination
+        "drawer_default_origin":      "Default Start",
+        "drawer_default_destination": "Default End",
+        "defaults_modal_title":    "Default Addresses",
+        "defaults_modal_subtitle": "Set a default start and end to use automatically on future routes.",
+        "defaults_save_btn":   "Save",
+        "defaults_saving_btn": "Saving…",
+        "defaults_save_error": "Error saving. Please try again.",
+        "hide_section_btn": "Hide section",
+        "show_section_btn": "Show section",
 
         # our-plans.html (SEO)
         "plans_hero_title": "See Our Plans",

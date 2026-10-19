@@ -292,6 +292,77 @@
     </div>
   </div>
 
+  <!-- Defaults (Início/Fim Padrão) Modal -->
+  <div class="modal-overlay" x-show="defaultsOpen" x-transition @click.self="defaultsOpen = false">
+    <div class="modal-card">
+      <h2 class="modal-title">{{ i18n.defaults_modal_title }}</h2>
+      <p class="clear-confirm-sub">{{ i18n.defaults_modal_subtitle }}</p>
+
+      <div class="endpoint-content" style="margin-bottom:1rem">
+        <div class="endpoint-hero-text">
+          <div class="stops-title">{{ i18n.origin_title }}</div>
+          <div class="stops-subtitle">{{ i18n.endpoint_optional }}</div>
+        </div>
+        <div class="input-wrap input-wrap-with-icon" x-show="defaultOrigin === ''">
+          <svg class="input-pin-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 21s-7-5.686-7-11a7 7 0 0 1 14 0c0 5.314-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>
+          </svg>
+          <input type="text" :placeholder="window.I18N.origin_placeholder"
+                 x-model="defaultOriginInput"
+                 @input.debounce.400ms="fetchSuggestions('defaultOrigin', defaultOriginInput)"
+                 @keydown.escape="defaultOriginSuggestions = []"
+                 @keydown.enter="setDefaultOrigin()" />
+          <ul class="suggestions" x-show="defaultOriginSuggestions.length > 0" @click.outside="defaultOriginSuggestions = []">
+            <template x-for="s in defaultOriginSuggestions" :key="s">
+              <li @mousedown.prevent="defaultOriginInput = s; defaultOriginSuggestions = []; setDefaultOrigin()" x-text="s"></li>
+            </template>
+          </ul>
+        </div>
+        <span class="set-label" x-show="defaultOrigin !== ''" x-text="defaultOrigin"></span>
+        <div class="endpoint-actions-split" style="margin-top:.5rem">
+          <button class="btn-endpoint-primary" x-show="defaultOrigin === ''" @click="setDefaultOrigin()" :disabled="defaultOriginInput.trim() === ''">{{ i18n.add_origin_btn }}</button>
+          <button class="btn-endpoint-edit" x-show="defaultOrigin !== ''" @click="defaultOriginInput = defaultOrigin; defaultOrigin = ''">{{ i18n.edit_endpoint_btn }}</button>
+          <button class="btn-endpoint-cancel" x-show="defaultOrigin !== ''" @click="defaultOrigin = ''; defaultOriginInput = ''; defaultOriginSuggestions = []">{{ i18n.cancel_endpoint_btn }}</button>
+        </div>
+      </div>
+
+      <div class="endpoint-content" style="margin-bottom:1rem">
+        <div class="endpoint-hero-text">
+          <div class="stops-title">{{ i18n.dest_title }}</div>
+          <div class="stops-subtitle">{{ i18n.endpoint_optional }}</div>
+        </div>
+        <div class="input-wrap input-wrap-with-icon" x-show="defaultDestination === ''">
+          <svg class="input-pin-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 21s-7-5.686-7-11a7 7 0 0 1 14 0c0 5.314-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>
+          </svg>
+          <input type="text" :placeholder="window.I18N.dest_placeholder"
+                 x-model="defaultDestInput"
+                 @input.debounce.400ms="fetchSuggestions('defaultDest', defaultDestInput)"
+                 @keydown.escape="defaultDestSuggestions = []"
+                 @keydown.enter="setDefaultDest()" />
+          <ul class="suggestions" x-show="defaultDestSuggestions.length > 0" @click.outside="defaultDestSuggestions = []">
+            <template x-for="s in defaultDestSuggestions" :key="s">
+              <li @mousedown.prevent="defaultDestInput = s; defaultDestSuggestions = []; setDefaultDest()" x-text="s"></li>
+            </template>
+          </ul>
+        </div>
+        <span class="set-label" x-show="defaultDestination !== ''" x-text="defaultDestination"></span>
+        <div class="endpoint-actions-split" style="margin-top:.5rem">
+          <button class="btn-endpoint-primary" x-show="defaultDestination === ''" @click="setDefaultDest()" :disabled="defaultDestInput.trim() === ''">{{ i18n.add_dest_btn }}</button>
+          <button class="btn-endpoint-edit" x-show="defaultDestination !== ''" @click="defaultDestInput = defaultDestination; defaultDestination = ''">{{ i18n.edit_endpoint_btn }}</button>
+          <button class="btn-endpoint-cancel" x-show="defaultDestination !== ''" @click="defaultDestination = ''; defaultDestInput = ''; defaultDestSuggestions = []">{{ i18n.cancel_endpoint_btn }}</button>
+        </div>
+      </div>
+
+      <p class="defaults-error" x-show="defaultsError" x-text="defaultsError"></p>
+
+      <button class="btn-modal-close" :disabled="defaultsSaving" @click="saveDefaults()">
+        <span x-show="!defaultsSaving">{{ i18n.defaults_save_btn }}</span>
+        <span x-show="defaultsSaving">{{ i18n.defaults_saving_btn }}</span>
+      </button>
+    </div>
+  </div>
+
   <!-- Pick Location on Map -->
   <div class="pick-location-overlay" x-show="pickLocationOpen" x-transition x-cloak>
     <div class="pick-location-header">
@@ -780,6 +851,15 @@
 
       <li class="drawer-divider"></li>
 
+      <li class="drawer-item" x-show="user" @click="openDefaultsModal('origin'); drawerOpen = false">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-5.686-7-11a7 7 0 0 1 14 0c0 5.314-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+        {{ i18n.drawer_default_origin }}
+      </li>
+      <li class="drawer-item" x-show="user" @click="openDefaultsModal('destination'); drawerOpen = false">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-5.686-7-11a7 7 0 0 1 14 0c0 5.314-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+        {{ i18n.drawer_default_destination }}
+      </li>
+
       <li class="drawer-item drawer-item-disabled">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
         {{ i18n.drawer_settings }}
@@ -1256,7 +1336,19 @@
           <div class="stops-title">{{ i18n.origin_title }}</div>
           <div class="stops-subtitle">{{ i18n.endpoint_optional }}</div>
         </div>
+        <button type="button" class="endpoint-eye-btn" @click="originSectionVisible = !originSectionVisible; localStorage.setItem('originSectionHidden', originSectionVisible ? '0' : '1')"
+                :aria-label="originSectionVisible ? window.I18N.hide_section_btn : window.I18N.show_section_btn"
+                :title="originSectionVisible ? window.I18N.hide_section_btn : window.I18N.show_section_btn">
+          <svg x-show="originSectionVisible" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+          </svg>
+          <svg x-show="!originSectionVisible" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+            <line x1="1" y1="1" x2="23" y2="23"/>
+          </svg>
+        </button>
       </div>
+      <div x-show="originSectionVisible">
       <div class="input-wrap input-wrap-with-icon" x-show="origin === ''" x-ref="originWrap">
         <svg class="input-pin-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 21s-7-5.686-7-11a7 7 0 0 1 14 0c0 5.314-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>
@@ -1298,6 +1390,7 @@
         <button class="btn-endpoint-edit" @click="editOrigin()">{{ i18n.edit_endpoint_btn }}</button>
         <button class="btn-endpoint-cancel" @click="origin = ''; originInput = ''; originSuggestions = []">{{ i18n.cancel_endpoint_btn }}</button>
       </div>
+      </div>
     </div>
 
     <div class="endpoint-divider"></div>
@@ -1310,7 +1403,19 @@
           <div class="stops-title">{{ i18n.dest_title }}</div>
           <div class="stops-subtitle">{{ i18n.endpoint_optional }}</div>
         </div>
+        <button type="button" class="endpoint-eye-btn" @click="destSectionVisible = !destSectionVisible; localStorage.setItem('destSectionHidden', destSectionVisible ? '0' : '1')"
+                :aria-label="destSectionVisible ? window.I18N.hide_section_btn : window.I18N.show_section_btn"
+                :title="destSectionVisible ? window.I18N.hide_section_btn : window.I18N.show_section_btn">
+          <svg x-show="destSectionVisible" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+          </svg>
+          <svg x-show="!destSectionVisible" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+            <line x1="1" y1="1" x2="23" y2="23"/>
+          </svg>
+        </button>
       </div>
+      <div x-show="destSectionVisible">
       <div class="input-wrap input-wrap-with-icon" x-show="dest === ''">
         <svg class="input-pin-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 21s-7-5.686-7-11a7 7 0 0 1 14 0c0 5.314-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>
@@ -1349,6 +1454,7 @@
       <div class="endpoint-actions-split" x-show="dest !== ''">
         <button class="btn-endpoint-edit" @click="editDest()">{{ i18n.edit_endpoint_btn }}</button>
         <button class="btn-endpoint-cancel" @click="dest = ''; destInput = ''; destSuggestions = []">{{ i18n.cancel_endpoint_btn }}</button>
+      </div>
       </div>
     </div>
 
