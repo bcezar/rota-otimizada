@@ -52,7 +52,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["https://rotaotimizada.com.br", "https://findmyroute.com.br"],
     allow_methods=["GET", "POST", "DELETE"],
-    allow_headers=["Content-Type", "Authorization"],
+    allow_headers=["Content-Type", "Authorization", "X-Anonymous-ID"],
 )
 
 app.include_router(routes.router, prefix="/api/v1")

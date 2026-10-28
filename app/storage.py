@@ -16,6 +16,7 @@ _routes: dict[str, dict] = {}
 _saved:  dict[str, dict] = {}
 _users:  dict[str, dict] = {}   # email → user dict
 _sessions: dict[str, str] = {}  # token → user_id
+_anonymous_optimization_usage: dict[tuple[str, str], int] = {}
 
 
 def _turso_configured() -> bool:
@@ -103,6 +104,12 @@ async def init_db() -> None:
         "comment TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')))"
     )
     await _execute(
+        "CREATE TABLE IF NOT EXISTS anonymous_optimization_usage "
+        "(anonymous_id TEXT NOT NULL, usage_date TEXT NOT NULL, "
+        "optimization_count INTEGER NOT NULL DEFAULT 0, "
+        "PRIMARY KEY (anonymous_id, usage_date))"
+    )
+    await _execute(
         "CREATE TABLE IF NOT EXISTS contact_messages "
         "(id TEXT PRIMARY KEY, user_id TEXT, email TEXT NOT NULL, message TEXT NOT NULL, "
         "created_at TEXT NOT NULL DEFAULT (datetime('now')))"
@@ -128,6 +135,10 @@ async def init_db() -> None:
     await _execute(
         "INSERT OR IGNORE INTO coupons (code, max_redemptions, expires_at, grants_stop_limit) "
         "VALUES ('ROTAEXCLUSIVE', 10, '2026-10-01 02:59:59', 100)"
+    )
+    # Keep only a short history for anonymous daily usage counters.
+    await _execute(
+        "DELETE FROM anonymous_optimization_usage WHERE usage_date < date('now', '-7 days')"
     )
     # prune stale + excess geocoding cache entries on every startup
     await _execute(
@@ -157,6 +168,42 @@ async def init_db() -> None:
     await _execute("ALTER TABLE users ADD COLUMN navigation_app TEXT", ignore_error=True)
     await _execute("ALTER TABLE users ADD COLUMN distance_unit TEXT", ignore_error=True)
     await _execute("ALTER TABLE users ADD COLUMN vehicle_type TEXT", ignore_error=True)
+
+
+async def get_anonymous_optimization_count(anonymous_id: str, usage_date: str) -> int:
+    if _turso_configured():
+        result = await _execute(
+            "SELECT optimization_count FROM anonymous_optimization_usage "
+            "WHERE anonymous_id = ? AND usage_date = ?",
+            [anonymous_id, usage_date],
+        )
+        rows = result.get("rows", [])
+        return int(_cell(rows[0][0])) if rows else 0
+    return _anonymous_optimization_usage.get((anonymous_id, usage_date), 0)
+
+
+async def consume_anonymous_optimization(anonymous_id: str, usage_date: str, limit: int) -> bool:
+    if _turso_configured():
+        await _execute(
+            "INSERT OR IGNORE INTO anonymous_optimization_usage "
+            "(anonymous_id, usage_date, optimization_count) VALUES (?, ?, 0)",
+            [anonymous_id, usage_date],
+        )
+        result = await _execute(
+            "UPDATE anonymous_optimization_usage "
+            "SET optimization_count = optimization_count + 1 "
+            "WHERE anonymous_id = ? AND usage_date = ? AND optimization_count < ? "
+            "RETURNING optimization_count",
+            [anonymous_id, usage_date, limit],
+        )
+        return bool(result.get("rows"))
+
+    key = (anonymous_id, usage_date)
+    current = _anonymous_optimization_usage.get(key, 0)
+    if current >= limit:
+        return False
+    _anonymous_optimization_usage[key] = current + 1
+    return True
 
 
 # ── Short links ─────────────────────────────────────────────────────────────

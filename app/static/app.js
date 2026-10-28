@@ -100,7 +100,7 @@ function routeApp() {
     myRoutes:           [],
     myRoutesLoading:    false,
     anonOptCount:       0,
-    anonOptDate:        '',
+    _anonymousId:       null,
     upgradeOpen:        false,
     upgradeCpf:         '',
     upgradeBillingType: 'PIX',
@@ -162,11 +162,14 @@ function routeApp() {
       if (localStorage.getItem('originSectionHidden') === '1') this.originSectionVisible = false;
       if (localStorage.getItem('destSectionHidden') === '1') this.destSectionVisible = false;
 
-      // Load anon optimization counter (resets daily)
-      const today = new Date().toISOString().slice(0, 10);
-      const anonData = JSON.parse(localStorage.getItem('anonOpts') || '{}');
-      this.anonOptDate  = today;
-      this.anonOptCount = anonData.date === today ? (anonData.count ?? 0) : 0;
+      // Keep a stable anonymous installation ID; the backend owns the daily count.
+      this._anonymousId = localStorage.getItem('anonymousInstallId');
+      if (!this._anonymousId) {
+        this._anonymousId = window.crypto?.randomUUID?.() ||
+          `anon-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        localStorage.setItem('anonymousInstallId', this._anonymousId);
+      }
+      this.refreshAnonUsage();
 
       const params       = new URLSearchParams(location.search);
       const sessionToken = params.get('session');
@@ -837,6 +840,19 @@ function routeApp() {
       this.loginResendCooldown = 0;
     },
 
+    async refreshAnonUsage() {
+      if (this.user || !this._anonymousId) return;
+      try {
+        const res = await fetch('/api/v1/guest/usage', {
+          headers: { 'X-Anonymous-ID': this._anonymousId },
+        });
+        if (res.ok) {
+          const usage = await res.json();
+          this.anonOptCount = usage.used;
+        }
+      } catch (_) {}
+    },
+
     async logout() {
       if (this._authToken) {
         fetch('/api/v1/auth/logout', {
@@ -850,6 +866,7 @@ function routeApp() {
       this.preferences = null;
       localStorage.removeItem('routeSession');
       this.userMenuOpen = false;
+      this.refreshAnonUsage();
     },
 
     openSaveRouteName() {
@@ -1569,6 +1586,7 @@ tr.sp td{font-weight:bold;background:#eef2ff}
       try {
         const headers = { 'Content-Type': 'application/json' };
         if (this._authToken) headers['Authorization'] = `Bearer ${this._authToken}`;
+        else headers['X-Anonymous-ID'] = this._anonymousId;
         const res = await fetch('/api/v1/routes/optimize', {
           method:  'POST',
           headers,
@@ -1580,14 +1598,16 @@ tr.sp td{font-weight:bold;background:#eef2ff}
           if (res.status === 403 && data.detail?.code === 'STOP_LIMIT_EXCEEDED') {
             const tpl = this.user ? window.I18N.err_stop_limit_pro : window.I18N.err_stop_limit_anon;
             this.error = tpl.replace('{limit}', data.detail.limit);
+          } else if (res.status === 429 && data.detail?.code === 'DAILY_OPTIMIZATION_LIMIT') {
+            this.anonOptCount = data.detail.used ?? 5;
+            this.error = window.I18N.daily_limit_msg;
           } else {
             this.error = typeof data.detail === 'string' ? data.detail : `Erro ${res.status}`;
           }
         } else {
-          // Increment anon daily optimization counter
           if (!this.user) {
-            this.anonOptCount++;
-            localStorage.setItem('anonOpts', JSON.stringify({ date: this.anonOptDate, count: this.anonOptCount }));
+            this.anonOptCount++; // optimistic UI; refresh from the authoritative server count
+            this.refreshAnonUsage();
           }
           this.result = data;
           this._track('route_optimization_success', {

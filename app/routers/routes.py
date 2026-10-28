@@ -1,4 +1,6 @@
+import hashlib
 import logging
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import httpx
@@ -399,6 +401,37 @@ _PRO_STOP_LIMIT       = 50
 _EXCLUSIVE_STOP_LIMIT = 100
 
 
+_ANONYMOUS_DAILY_OPTIMIZATION_LIMIT = 5
+
+
+def _anonymous_id(request: Request) -> str:
+    supplied_id = request.headers.get("X-Anonymous-ID", "").strip()
+    if supplied_id:
+        return supplied_id[:128]
+    # Backward compatibility for clients that have not adopted persistent IDs.
+    host = request.client.host if request.client else "unknown"
+    return "ip:" + hashlib.sha256(host.encode("utf-8")).hexdigest()
+
+
+def _utc_usage_window() -> tuple[str, str]:
+    now = datetime.now(timezone.utc)
+    tomorrow = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    return now.date().isoformat(), tomorrow.isoformat()
+
+
+def _anonymous_usage_payload(used: int, resets_at: str) -> dict:
+    limit = _ANONYMOUS_DAILY_OPTIMIZATION_LIMIT
+    return {"limit": limit, "used": used, "remaining": max(0, limit - used), "resets_at": resets_at}
+
+
+@router.get("/guest/usage")
+@limiter.limit("60/minute")
+async def anonymous_usage(request: Request):
+    usage_date, resets_at = _utc_usage_window()
+    used = await storage.get_anonymous_optimization_count(_anonymous_id(request), usage_date)
+    return _anonymous_usage_payload(used, resets_at)
+
+
 @router.post("/routes/optimize", response_model=RouteResponse)
 @limiter.limit("20/minute")
 async def optimize_route(request: Request, body: RouteRequest = Body(...)):
@@ -406,6 +439,16 @@ async def optimize_route(request: Request, body: RouteRequest = Body(...)):
     # Enforce per-plan stop limit (auth is optional — anon users have no token)
     token = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
     current_user = await storage.get_user_by_token(token) if token else None
+    is_anonymous = current_user is None
+    guest_id = _anonymous_id(request) if is_anonymous else None
+    usage_date, resets_at = _utc_usage_window()
+    if is_anonymous:
+        used = await storage.get_anonymous_optimization_count(guest_id, usage_date)
+        if used >= _ANONYMOUS_DAILY_OPTIMIZATION_LIMIT:
+            raise HTTPException(
+                status_code=429,
+                detail={"code": "DAILY_OPTIMIZATION_LIMIT", **_anonymous_usage_payload(used, resets_at)},
+            )
     is_pro = bool(current_user.get("is_pro", False)) if current_user else False
     is_exclusive = bool(current_user.get("is_exclusive", False)) if current_user else False
     stop_limit = (
@@ -419,6 +462,12 @@ async def optimize_route(request: Request, body: RouteRequest = Body(...)):
                 "limit": stop_limit,
                 "is_pro": is_pro,
             },
+        )
+
+    if body.stop_ids is not None and len(body.stop_ids) != len(body.addresses):
+        raise HTTPException(
+            status_code=422,
+            detail="stop_ids must contain one ID for each address.",
         )
 
     # Collect all addresses that need geocoding (no duplicates)
@@ -435,7 +484,13 @@ async def optimize_route(request: Request, body: RouteRequest = Body(...)):
     if body.destination and body.destination not in resolved:
         raise HTTPException(status_code=422, detail=s["err_destination_geocode"])
 
-    resolved_addresses = [a for a in body.addresses if a in resolved]
+    resolved_entries = [
+        (address, body.stop_ids[index] if body.stop_ids is not None else None)
+        for index, address in enumerate(body.addresses)
+        if address in resolved
+    ]
+    resolved_addresses = [address for address, _ in resolved_entries]
+    resolved_stop_ids = [stop_id for _, stop_id in resolved_entries]
 
     if len(resolved_addresses) < 2:
         raise HTTPException(
@@ -443,21 +498,33 @@ async def optimize_route(request: Request, body: RouteRequest = Body(...)):
             detail=s["err_min_geocoded"],
         )
 
-    fixed_first = body.fixed_first
-    fixed_last  = body.fixed_last
+    fixed_first = None if body.preserve_order else body.fixed_first
+    fixed_last = None if body.preserve_order else body.fixed_last
 
     if fixed_first and fixed_first not in resolved:
         raise HTTPException(status_code=422, detail="O endereço 'visitar primeiro' não pôde ser geocodificado.")
     if fixed_last and fixed_last not in resolved:
         raise HTTPException(status_code=422, detail="O endereço 'visitar por último' não pôde ser geocodificado.")
 
-    # Reorder resolved_addresses: fixed_first leads, fixed_last trails
-    _middle = [a for a in resolved_addresses if a != fixed_first and a != fixed_last]
-    resolved_addresses = (
-        ([fixed_first] if fixed_first else []) +
-        _middle +
-        ([fixed_last]  if fixed_last  else [])
-    )
+    if not body.preserve_order:
+        # Move one occurrence of each fixed stop and keep IDs paired with it.
+        first_index = next(
+            (i for i, (address, _) in enumerate(resolved_entries) if address == fixed_first),
+            None,
+        ) if fixed_first else None
+        last_index = next(
+            (i for i in range(len(resolved_entries) - 1, -1, -1)
+             if resolved_entries[i][0] == fixed_last and i != first_index),
+            None,
+        ) if fixed_last else None
+        endpoint_indices = {i for i in (first_index, last_index) if i is not None}
+        resolved_entries = (
+            ([resolved_entries[first_index]] if first_index is not None else [])
+            + [entry for i, entry in enumerate(resolved_entries) if i not in endpoint_indices]
+            + ([resolved_entries[last_index]] if last_index is not None else [])
+        )
+        resolved_addresses = [address for address, _ in resolved_entries]
+        resolved_stop_ids = [stop_id for _, stop_id in resolved_entries]
     coords = [resolved[a] for a in resolved_addresses]
 
     # Build full coordinate list for the distance matrix
@@ -475,10 +542,12 @@ async def optimize_route(request: Request, body: RouteRequest = Body(...)):
     # When fixed_first + origin both exist: origin→fixed_first is a fixed prefix leg;
     # exclude origin from the optimizer so OR-Tools doesn't freely reorder it.
     # Symmetrically for fixed_last + destination.
-    has_fixed_prefix = bool(body.origin and fixed_first)
-    has_fixed_suffix = bool(body.destination and fixed_last)
+    has_fixed_prefix = not body.preserve_order and bool(body.origin and fixed_first)
+    has_fixed_suffix = not body.preserve_order and bool(body.destination and fixed_last)
 
-    if has_fixed_prefix and has_fixed_suffix:
+    if body.preserve_order:
+        opt_indices = list(range(n))
+    elif has_fixed_prefix and has_fixed_suffix:
         opt_indices = list(range(origin_offset, n - 1))
     elif has_fixed_prefix:
         opt_indices = list(range(origin_offset, n))
@@ -490,7 +559,11 @@ async def optimize_route(request: Request, body: RouteRequest = Body(...)):
     opt_matrix = [[matrix[i][j] for j in opt_indices] for i in opt_indices]
     opt_end    = len(opt_indices) - 1 if (body.destination or fixed_last) else None
 
-    opt_order = optimizer.optimize_route(opt_matrix, start_index=0, end_index=opt_end)
+    opt_order = (
+        list(range(len(opt_indices)))
+        if body.preserve_order
+        else optimizer.optimize_route(opt_matrix, start_index=0, end_index=opt_end)
+    )
 
     # Reassemble full_order in all_coords indices, prepending/appending fixed legs
     full_order = (
@@ -516,6 +589,7 @@ async def optimize_route(request: Request, body: RouteRequest = Body(...)):
     optimized_route = [
         RouteStop(
             order=i + 1,
+            stop_id=resolved_stop_ids[idx],
             original_address=resolved_addresses[idx],
             coordinates=Coordinates(lat=coords[idx][0], lng=coords[idx][1]),
             leg_distance_km=round(matrix[full_order[first + i]][full_order[first + i + 1]], 2)
@@ -533,7 +607,7 @@ async def optimize_route(request: Request, body: RouteRequest = Body(...)):
     origin_info = _make_endpoint_info(body.origin) if body.origin else None
     destination_info = _make_endpoint_info(body.destination) if body.destination else None
 
-    return RouteResponse(
+    response = RouteResponse(
         optimized_route=optimized_route,
         total_distance_km=round(total_km, 2),
         geocoding_failures=failures,
@@ -542,6 +616,15 @@ async def optimize_route(request: Request, body: RouteRequest = Body(...)):
         maps_url=_build_maps_url(origin_info, destination_info, optimized_route),
         total_duration_min=round(total_dur, 1) if total_dur is not None else None,
     )
+    if is_anonymous and not await storage.consume_anonymous_optimization(
+        guest_id, usage_date, _ANONYMOUS_DAILY_OPTIMIZATION_LIMIT
+    ):
+        used = await storage.get_anonymous_optimization_count(guest_id, usage_date)
+        raise HTTPException(
+            status_code=429,
+            detail={"code": "DAILY_OPTIMIZATION_LIMIT", **_anonymous_usage_payload(used, resets_at)},
+        )
+    return response
 
 
 _MAPS_MAX_STOPS = 23  # Google Maps URL limit for intermediate waypoints

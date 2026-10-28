@@ -1525,6 +1525,12 @@
     </div>
   </div>
 
+  <!-- Anonymous daily usage -->
+  <div class="limit-hint" x-show="!user && anonOptCount < 5">
+    <span x-text="window.I18N.daily_usage_hint.replace('{remaining}', anonOptsRemaining)"></span>
+    <button class="limit-hint-cta" @click="loginOpen = true">{{ i18n.signup_free_btn }}</button>
+  </div>
+
   <!-- Plan limit hints -->
   <div class="limit-hint" x-show="addresses.length > stopLimit">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>

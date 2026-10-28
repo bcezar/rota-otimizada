@@ -15,6 +15,8 @@ class RouteRequest(BaseModel):
     destination: Optional[Address] = None
     fixed_first: Optional[Address] = None
     fixed_last: Optional[Address] = None
+    stop_ids: Optional[list[str]] = None
+    preserve_order: bool = False
 
 
 class Coordinates(BaseModel):
@@ -29,6 +31,7 @@ class OriginInfo(BaseModel):
 
 class RouteStop(BaseModel):
     order: int
+    stop_id: Optional[str] = None
     original_address: str
     coordinates: Coordinates
     leg_distance_km: Optional[float] = None
