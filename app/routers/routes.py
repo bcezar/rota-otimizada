@@ -14,7 +14,8 @@ from app.config import settings
 from app.i18n import get_strings
 from app.limiter import limiter
 from app.models import (
-    ContactRequest, Coordinates, FeedbackRequest, LoginRequest, LoginResponse, MagicRequestBody,
+    AddressBookSyncRequest, ContactRequest, Coordinates, FeedbackRequest, LoginRequest, LoginResponse,
+    MagicRequestBody, MobileAuthExchangeRequest,
     MagicRequestResponse, MapImageRequest, OriginInfo, PolylineRequest, RouteRequest, RouteResponse,
     RouteStop, SaveRouteRequest, UpdatePreferencesRequest, UserPreferences, UserResponse,
 )
@@ -47,14 +48,17 @@ async def _require_auth(request: Request) -> dict:
     return user
 
 
-# ── Auth: e-mail simples (mantido para retrocompatibilidade) ─────────────────
+# ── Auth: e-mail simples apenas para desenvolvimento local ───────────────────
 
 @router.post("/auth/login", response_model=LoginResponse)
 @limiter.limit("10/minute")
 async def login(request: Request, body: LoginRequest = Body(...)):
+    if not settings.dev_email_login_enabled:
+        raise HTTPException(status_code=404, detail="Login provisório desabilitado.")
     user = await storage.find_or_create_user(body.email.lower().strip())
     token = await storage.create_session(user["id"])
-    return {"token": token, "user": _user_response(user)}
+    current_user = await storage.get_user_by_token(token) or user
+    return {"token": token, "user": _user_response(current_user)}
 
 
 @router.post("/auth/logout")
@@ -87,14 +91,29 @@ async def update_preferences(request: Request, body: UpdatePreferencesRequest = 
     return await storage.get_user_preferences(user["id"])
 
 
+# ── User address book ─────────────────────────────────────────────────────────
+
+@router.get("/address-book")
+async def list_address_book(request: Request):
+    user = await _require_auth(request)
+    return {"addresses": await storage.list_user_address_book(user["id"])}
+
+
+@router.put("/address-book/sync")
+async def sync_address_book(request: Request, body: AddressBookSyncRequest = Body(...)):
+    user = await _require_auth(request)
+    records = [record.model_dump() for record in body.addresses]
+    return {"addresses": await storage.sync_user_address_book(user["id"], records)}
+
+
 # ── Auth: Magic Link ──────────────────────────────────────────────────────────
 
-async def _send_magic_email(to_email: str, magic_token: str) -> None:
+async def _send_magic_email(to_email: str, magic_token: str, client: str = "web") -> None:
     if not settings.resend_api_key:
         logger.warning("RESEND_API_KEY not set — magic link email skipped for %s", to_email)
         return
     s = get_strings(settings.locale)
-    link = f"{settings.app_base_url}/api/v1/auth/verify?token={magic_token}"
+    link = f"{settings.app_base_url}/api/v1/auth/verify?token={magic_token}&client={client}"
     try:
         import resend
         resend.api_key = settings.resend_api_key
@@ -160,22 +179,52 @@ async def magic_request(request: Request, body: MagicRequestBody = Body(...)):
     magic_token = await storage.create_magic_token(user["id"])
     # fire-and-forget — não bloqueia o response se o e-mail demorar
     import asyncio
-    asyncio.create_task(_send_magic_email(email, magic_token))
+    asyncio.create_task(_send_magic_email(email, magic_token, body.client))
     return {"ok": True}
 
 
 @router.get("/auth/verify")
-async def verify_magic(request: Request, token: str = QueryParam(...)):
+async def verify_magic(
+    request: Request,
+    token: str = QueryParam(...),
+    client: str = QueryParam("web", pattern="^(web|app)$"),
+):
     user_id = await storage.consume_magic_token(token)
     if not user_id:
+        if client == "app":
+            return RedirectResponse(
+                url=f"{settings.mobile_app_scheme}://auth/callback?error=expired",
+                status_code=302,
+            )
         return RedirectResponse(url="/?auth_error=expired", status_code=302)
-    session_token = await storage.create_session(user_id)
     # mark email as verified
     await storage.mark_email_verified(user_id)
+    if client == "app":
+        # Exchange this short-lived, one-time code for the long-lived session
+        # inside the app. Never place the session token itself in a deep link.
+        code = await storage.create_mobile_auth_code(user_id)
+        return RedirectResponse(
+            url=f"{settings.mobile_app_scheme}://auth/callback?code={code}",
+            status_code=302,
+        )
+    session_token = await storage.create_session(user_id)
     return RedirectResponse(
         url=f"/?session={session_token}",
         status_code=302,
     )
+
+
+@router.post("/auth/mobile-exchange", response_model=LoginResponse)
+@limiter.limit("10/minute")
+async def mobile_auth_exchange(request: Request, body: MobileAuthExchangeRequest = Body(...)):
+    user_id = await storage.consume_mobile_auth_code(body.code)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Este link expirou ou já foi usado. Solicite um novo link.")
+    session_token = await storage.create_session(user_id)
+    user = await storage.get_user_by_token(session_token)
+    if not user:
+        raise HTTPException(status_code=401, detail="Não foi possível iniciar sua sessão. Solicite um novo link.")
+    return {"token": session_token, "user": _user_response(user)}
 
 
 # ── Auth: Google OAuth ────────────────────────────────────────────────────────
@@ -301,10 +350,15 @@ async def shorten_route(request: Request, body: RouteRequest = Body(...)):
 @limiter.limit("20/minute")
 async def save_route(request: Request, body: SaveRouteRequest = Body(...)):
     user = await _require_auth(request)
+    inputs = body.inputs.model_dump()
+    if body.stop_details is not None:
+        inputs["stop_details"] = [stop.model_dump() for stop in body.stop_details]
+    if body.destination_mode is not None:
+        inputs["destination_mode"] = body.destination_mode
     code = await storage.save_result(
         body.name,
         body.result.model_dump(),
-        body.inputs.model_dump(),
+        inputs,
         user["id"],
     )
     return {"code": code, "path": f"/s/{code}"}

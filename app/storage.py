@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import secrets
 import uuid
 from datetime import datetime, timezone
@@ -17,6 +18,8 @@ _saved:  dict[str, dict] = {}
 _users:  dict[str, dict] = {}   # email → user dict
 _sessions: dict[str, str] = {}  # token → user_id
 _anonymous_optimization_usage: dict[tuple[str, str], int] = {}
+_user_address_books: dict[str, dict[str, dict]] = {}
+_account_deletion_requests: dict[str, dict] = {}
 
 
 def _turso_configured() -> bool:
@@ -90,6 +93,11 @@ async def init_db() -> None:
         "expires_at TEXT NOT NULL, used_at TEXT DEFAULT NULL)"
     )
     await _execute(
+        "CREATE TABLE IF NOT EXISTS mobile_auth_codes "
+        "(code TEXT PRIMARY KEY, user_id TEXT NOT NULL, "
+        "expires_at TEXT NOT NULL, used_at TEXT DEFAULT NULL)"
+    )
+    await _execute(
         "CREATE TABLE IF NOT EXISTS oauth_states "
         "(state TEXT PRIMARY KEY, expires_at TEXT NOT NULL)"
     )
@@ -110,9 +118,25 @@ async def init_db() -> None:
         "PRIMARY KEY (anonymous_id, usage_date))"
     )
     await _execute(
+        "CREATE TABLE IF NOT EXISTS user_address_book "
+        "(user_id TEXT NOT NULL, address_id TEXT NOT NULL, address TEXT NOT NULL, "
+        "place_name TEXT NOT NULL DEFAULT '', notes TEXT NOT NULL DEFAULT '', "
+        "client_json TEXT, tags_json TEXT NOT NULL DEFAULT '[]', updated_at TEXT NOT NULL, "
+        "deleted_at TEXT, position INTEGER NOT NULL DEFAULT 0, "
+        "PRIMARY KEY (user_id, address_id))"
+    )
+    await _execute(
         "CREATE TABLE IF NOT EXISTS contact_messages "
         "(id TEXT PRIMARY KEY, user_id TEXT, email TEXT NOT NULL, message TEXT NOT NULL, "
         "created_at TEXT NOT NULL DEFAULT (datetime('now')))"
+    )
+    await _execute(
+        "CREATE TABLE IF NOT EXISTS account_deletion_requests "
+        "(id TEXT PRIMARY KEY, user_id TEXT, token_hash TEXT UNIQUE, status TEXT NOT NULL, "
+        "provider TEXT, payment_id TEXT, refund_amount REAL NOT NULL DEFAULT 0, "
+        "currency TEXT NOT NULL DEFAULT 'BRL', refund_type TEXT NOT NULL DEFAULT 'none', "
+        "period_end TEXT, expires_at TEXT NOT NULL, created_at TEXT NOT NULL, "
+        "updated_at TEXT NOT NULL DEFAULT (datetime('now')) )"
     )
     await _execute(
         "CREATE TABLE IF NOT EXISTS coupons "
@@ -265,7 +289,7 @@ async def list_results(user_id: str) -> list[dict]:
             [user_id],
         )
         rows = r.get("rows", [])
-        return [
+        routes = [
             {
                 "code":       _cell(row[0]),
                 "name":       _cell(row[1]),
@@ -275,11 +299,67 @@ async def list_results(user_id: str) -> list[dict]:
             }
             for row in rows
         ]
-    return [
+        return [_normalize_saved_route(route) for route in routes]
+    routes = [
         {"code": k, "name": v["name"], "result": v["result"], "inputs": v["inputs"], "created_at": None}
         for k, v in _saved.items()
         if v.get("user_id") == user_id
     ]
+    return [_normalize_saved_route(route) for route in routes]
+
+
+def _normalize_saved_route(route: dict) -> dict:
+    """Fill fields introduced after older web-saved routes were created.
+
+    This only normalizes the response; the original database record is unchanged.
+    """
+    normalized = dict(route)
+    inputs = dict(normalized.get("inputs") or {})
+    result = dict(normalized.get("result") or {})
+    optimized_stops = result.get("optimized_route") or []
+
+    raw_addresses = inputs.get("addresses") or []
+    addresses = [
+        item if isinstance(item, str) else item.get("address", "")
+        for item in raw_addresses
+        if isinstance(item, str) or isinstance(item, dict)
+    ]
+    addresses = [address for address in addresses if isinstance(address, str) and address.strip()]
+    if not addresses:
+        addresses = [
+            stop.get("original_address", "")
+            for stop in sorted(optimized_stops, key=lambda item: item.get("order", 0))
+            if isinstance(stop, dict) and stop.get("original_address")
+        ]
+    inputs["addresses"] = addresses
+
+    ids = inputs.get("stop_ids")
+    if not isinstance(ids, list) or len(ids) != len(addresses) or not all(ids):
+        ids = [f"saved-{normalized.get('code', 'legacy')}-{index + 1}" for index in range(len(addresses))]
+    inputs["stop_ids"] = ids
+
+    # Older results have no stop_id. Match by address using queues so duplicate
+    # addresses remain distinct stops and keep their own generated IDs.
+    ids_by_address: dict[str, list[str]] = {}
+    for address, stop_id in zip(addresses, ids):
+        ids_by_address.setdefault(address.strip().casefold(), []).append(stop_id)
+    normalized_stops = []
+    for stop in optimized_stops:
+        if not isinstance(stop, dict):
+            normalized_stops.append(stop)
+            continue
+        normalized_stop = dict(stop)
+        if not normalized_stop.get("stop_id"):
+            key = str(normalized_stop.get("original_address", "")).strip().casefold()
+            candidates = ids_by_address.get(key, [])
+            if candidates:
+                normalized_stop["stop_id"] = candidates.pop(0)
+        normalized_stops.append(normalized_stop)
+    result["optimized_route"] = normalized_stops
+
+    normalized["inputs"] = inputs
+    normalized["result"] = result
+    return normalized
 
 
 async def delete_result(code: str, user_id: str) -> None:
@@ -315,10 +395,27 @@ def _row_to_user(row: list) -> dict:
     }
 
 
+async def get_user_by_id(user_id: str) -> Optional[dict]:
+    if _turso_configured():
+        r = await _execute(
+            "SELECT id,email,CASE WHEN is_pro=1 AND (pro_expires_at IS NULL OR pro_expires_at>datetime('now')) THEN 1 ELSE 0 END,"
+            "email_verified,name,picture_url,asaas_customer_id,stripe_customer_id,"
+            "CASE WHEN exclusive_until IS NOT NULL AND exclusive_until>datetime('now') THEN 1 ELSE 0 END,exclusive_until "
+            "FROM users WHERE id=?", [user_id]
+        )
+        rows = r.get("rows", [])
+        return _row_to_user(rows[0]) if rows else None
+    return _users.get(user_id)
+
+
 async def find_or_create_user(email: str) -> dict:
     if _turso_configured():
         r = await _execute(
-            "SELECT id, email, is_pro, email_verified, name, picture_url "
+            "SELECT id, email, "
+            "CASE WHEN is_pro = 1 AND (pro_expires_at IS NULL OR pro_expires_at > datetime('now')) THEN 1 ELSE 0 END AS is_pro, "
+            "email_verified, name, picture_url, asaas_customer_id, stripe_customer_id, "
+            "CASE WHEN exclusive_until IS NOT NULL AND exclusive_until > datetime('now') THEN 1 ELSE 0 END AS is_exclusive, "
+            "exclusive_until "
             "FROM users WHERE email = ?", [email]
         )
         rows = r.get("rows", [])
@@ -347,7 +444,11 @@ async def find_or_create_user_google(email: str, google_sub: str,
     if _turso_configured():
         # Try by google_sub first
         r = await _execute(
-            "SELECT id, email, is_pro, email_verified, name, picture_url "
+            "SELECT id, email, "
+            "CASE WHEN is_pro = 1 AND (pro_expires_at IS NULL OR pro_expires_at > datetime('now')) THEN 1 ELSE 0 END AS is_pro, "
+            "email_verified, name, picture_url, asaas_customer_id, stripe_customer_id, "
+            "CASE WHEN exclusive_until IS NOT NULL AND exclusive_until > datetime('now') THEN 1 ELSE 0 END AS is_exclusive, "
+            "exclusive_until "
             "FROM users WHERE google_sub = ?", [google_sub]
         )
         rows = r.get("rows", [])
@@ -355,7 +456,11 @@ async def find_or_create_user_google(email: str, google_sub: str,
             return _row_to_user(rows[0])
         # Try by email (link existing magic-link account)
         r = await _execute(
-            "SELECT id, email, is_pro, email_verified, name, picture_url "
+            "SELECT id, email, "
+            "CASE WHEN is_pro = 1 AND (pro_expires_at IS NULL OR pro_expires_at > datetime('now')) THEN 1 ELSE 0 END AS is_pro, "
+            "email_verified, name, picture_url, asaas_customer_id, stripe_customer_id, "
+            "CASE WHEN exclusive_until IS NOT NULL AND exclusive_until > datetime('now') THEN 1 ELSE 0 END AS is_exclusive, "
+            "exclusive_until "
             "FROM users WHERE email = ?", [email]
         )
         rows = r.get("rows", [])
@@ -474,6 +579,127 @@ async def delete_session(token: str) -> None:
         _sessions.pop(token, None)
 
 
+async def create_account_deletion_request(request: dict) -> None:
+    if _turso_configured():
+        await _execute(
+            "UPDATE account_deletion_requests SET status='replaced', token_hash=NULL, updated_at=? "
+            "WHERE user_id=? AND status IN ('requested','failed')",
+            [request['created_at'], request['user_id']],
+        )
+        await _execute(
+            "INSERT INTO account_deletion_requests "
+            "(id,user_id,token_hash,status,provider,payment_id,refund_amount,currency,refund_type,period_end,expires_at,created_at) "
+            "VALUES (?,?,?,'requested',?,?,?,?,?,?,?,?)",
+            [request['id'], request['user_id'], request['token_hash'], request.get('provider'),
+             request.get('payment_id'), request['refund_amount'], request['currency'],
+             request['refund_type'], request.get('period_end'), request['expires_at'], request['created_at']],
+        )
+        return
+    for existing in _account_deletion_requests.values():
+        if existing.get('user_id') == request['user_id'] and existing.get('status') in ('requested', 'failed'):
+            existing.update({'status': 'replaced', 'token_hash': None})
+    _account_deletion_requests[request['id']] = dict(request, status='requested')
+
+
+async def get_account_deletion_request(token_hash: str) -> Optional[dict]:
+    if _turso_configured():
+        result = await _execute(
+            "SELECT id,user_id,token_hash,status,provider,payment_id,refund_amount,currency,refund_type,period_end,expires_at "
+            "FROM account_deletion_requests WHERE token_hash=? AND expires_at>datetime('now')",
+            [token_hash],
+        )
+        rows = result.get('rows', [])
+        if not rows:
+            return None
+        row = [_cell(value) for value in rows[0]]
+        return dict(zip(('id','user_id','token_hash','status','provider','payment_id','refund_amount','currency','refund_type','period_end','expires_at'), row))
+    for request in _account_deletion_requests.values():
+        if (request.get('token_hash') == token_hash
+                and request.get('status') not in ('completed', 'replaced')
+                and request.get('expires_at', '') > _now_iso()):
+            return dict(request)
+    return None
+
+
+async def get_pending_account_deletion_by_payment(payment_id: str) -> Optional[dict]:
+    if _turso_configured():
+        result = await _execute(
+            "SELECT id,user_id,token_hash,status,provider,payment_id,refund_amount,currency,refund_type,period_end,expires_at "
+            "FROM account_deletion_requests WHERE payment_id=? AND status IN ('refund_processing','awaiting_refund') "
+            "ORDER BY created_at DESC LIMIT 1", [payment_id]
+        )
+        rows = result.get("rows", [])
+        if not rows:
+            return None
+        row = [_cell(value) for value in rows[0]]
+        return dict(zip(('id','user_id','token_hash','status','provider','payment_id','refund_amount','currency','refund_type','period_end','expires_at'), row))
+    matches = [r for r in _account_deletion_requests.values()
+               if r.get('payment_id') == payment_id and r.get('status') in ('refund_processing', 'awaiting_refund')]
+    return dict(matches[-1]) if matches else None
+
+
+async def get_pending_account_deletion_for_user(user_id: str) -> Optional[dict]:
+    if _turso_configured():
+        result = await _execute(
+            "SELECT id,status FROM account_deletion_requests WHERE user_id=? "
+            "AND ((status='requested' AND expires_at>datetime('now')) OR status IN ('refund_processing','awaiting_refund')) "
+            "ORDER BY created_at DESC LIMIT 1",
+            [user_id],
+        )
+        rows = result.get('rows', [])
+        return {'id': _cell(rows[0][0]), 'status': _cell(rows[0][1])} if rows else None
+    requests = [r for r in _account_deletion_requests.values()
+                if r.get('user_id') == user_id and r.get('status') in ('requested', 'refund_processing', 'awaiting_refund')]
+    return dict(requests[-1]) if requests else None
+
+
+async def update_account_deletion_request(request_id: str, status: str) -> None:
+    if _turso_configured():
+        await _execute(
+            "UPDATE account_deletion_requests SET status=?,updated_at=? WHERE id=?",
+            [status, _now_iso(), request_id],
+        )
+    elif request_id in _account_deletion_requests:
+        _account_deletion_requests[request_id]['status'] = status
+
+
+async def finish_account_deletion(request_id: str, user_id: str) -> None:
+    """Remove account data while retaining anonymized billing/coupon audit records."""
+    if _turso_configured():
+        await _execute("DELETE FROM sessions WHERE user_id=?", [user_id])
+        await _execute("DELETE FROM magic_tokens WHERE user_id=?", [user_id])
+        await _execute("DELETE FROM mobile_auth_codes WHERE user_id=?", [user_id])
+        await _execute("DELETE FROM saved_routes WHERE user_id=?", [user_id])
+        await _execute("DELETE FROM user_address_book WHERE user_id=?", [user_id])
+        await _execute("UPDATE feedback SET user_id=NULL,comment=NULL WHERE user_id=?", [user_id])
+        await _execute("UPDATE contact_messages SET user_id=NULL,email='[removido]' WHERE user_id=?", [user_id])
+        redemptions = await _execute("SELECT code,cpf_cnpj FROM coupon_redemptions WHERE user_id=?", [user_id])
+        for row in redemptions.get('rows', []):
+            code, cpf_cnpj = _cell(row[0]), _cell(row[1])
+            cpf_hash = hashlib.sha256(str(cpf_cnpj).encode('utf-8')).hexdigest()
+            await _execute(
+                "UPDATE coupon_redemptions SET user_id=?,cpf_cnpj=? WHERE code=? AND user_id=?",
+                [f"deleted:{user_id}", cpf_hash, code, user_id],
+            )
+        await _execute(
+            "UPDATE account_deletion_requests SET user_id=NULL,token_hash=NULL,status='completed',updated_at=? WHERE id=?",
+            [_now_iso(), request_id],
+        )
+        await _execute("DELETE FROM users WHERE id=?", [user_id])
+        return
+    for token, owner in list(_sessions.items()):
+        if owner == user_id or (isinstance(owner, dict) and owner.get('user_id') == user_id):
+            _sessions.pop(token, None)
+    for code, route in list(_saved.items()):
+        if route.get('user_id') == user_id:
+            _saved.pop(code, None)
+    _user_address_books.pop(user_id, None)
+    for request in _account_deletion_requests.values():
+        if request['id'] == request_id:
+            request.update({'user_id': None, 'token_hash': None, 'status': 'completed'})
+    _users.pop(user_id, None)
+
+
 # ── Magic link tokens ─────────────────────────────────────────────────────────
 
 async def create_magic_token(user_id: str) -> str:
@@ -512,6 +738,46 @@ async def consume_magic_token(token: str) -> Optional[str]:
         entry["used_at"] = _now_iso()
         return entry["user_id"]
     return None
+
+
+async def create_mobile_auth_code(user_id: str) -> str:
+    from datetime import timedelta
+    code = secrets.token_urlsafe(32)
+    expires_at = (datetime.now(timezone.utc) + timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S")
+    if _turso_configured():
+        await _execute(
+            "INSERT INTO mobile_auth_codes (code, user_id, expires_at) VALUES (?, ?, ?)",
+            [code, user_id, expires_at],
+        )
+    else:
+        _sessions["mobile-code:" + code] = {"user_id": user_id, "expires_at": expires_at}
+    return code
+
+
+async def consume_mobile_auth_code(code: str) -> Optional[str]:
+    if _turso_configured():
+        r = await _execute(
+            "SELECT user_id FROM mobile_auth_codes "
+            "WHERE code = ? AND used_at IS NULL AND expires_at > datetime('now')",
+            [code],
+        )
+        rows = r.get("rows", [])
+        if not rows:
+            return None
+        user_id = _cell(rows[0][0])
+        await _execute(
+            "UPDATE mobile_auth_codes SET used_at = ? WHERE code = ? AND used_at IS NULL",
+            [_now_iso(), code],
+        )
+        return user_id
+    entry = _sessions.get("mobile-code:" + code)
+    if not entry or entry.get("used_at"):
+        return None
+    expires_at = entry.get("expires_at", "")
+    if expires_at <= datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"):
+        return None
+    entry["used_at"] = _now_iso()
+    return entry["user_id"]
 
 
 async def mark_email_verified(user_id: str) -> None:
@@ -683,6 +949,82 @@ async def update_user_preferences(user_id: str, fields: dict) -> None:
         _users[user_id].update(fields)
 
 
+# ── User address book ─────────────────────────────────────────────────────────
+
+_ADDRESS_BOOK_COLUMNS = (
+    "user_id, address_id, address, place_name, notes, client_json, "
+    "tags_json, updated_at, deleted_at, position"
+)
+
+
+def _address_book_order(items: list[dict]) -> list[dict]:
+    return sorted(items, key=lambda item: (int(item.get("position", 0)), item["id"]))
+
+
+async def list_user_address_book(user_id: str) -> list[dict]:
+    if _turso_configured():
+        result = await _execute(
+            "SELECT address_id, address, place_name, notes, client_json, tags_json, "
+            "updated_at, deleted_at, position FROM user_address_book "
+            "WHERE user_id = ? ORDER BY position, address_id",
+            [user_id],
+        )
+        records = []
+        for row in result.get("rows", []):
+            client_json = _cell(row[4])
+            tags_json = _cell(row[5])
+            records.append({
+                "id": _cell(row[0]),
+                "address": _cell(row[1]),
+                "place_name": _cell(row[2]) or "",
+                "notes": _cell(row[3]) or "",
+                "client": json.loads(client_json) if client_json else None,
+                "tags": json.loads(tags_json) if tags_json else [],
+                "updated_at": _cell(row[6]),
+                "deleted_at": _cell(row[7]),
+                "position": int(_cell(row[8]) or 0),
+            })
+        return records
+    return _address_book_order(list(_user_address_books.get(user_id, {}).values()))
+
+
+async def sync_user_address_book(user_id: str, records: list[dict]) -> list[dict]:
+    if _turso_configured():
+        columns = 10
+        chunk_size = 50
+        for offset in range(0, len(records), chunk_size):
+            chunk = records[offset:offset + chunk_size]
+            placeholders = ", ".join(["(" + ", ".join(["?"] * columns) + ")"] * len(chunk))
+            args = []
+            for item in chunk:
+                args.extend([
+                    user_id, item["id"], item["address"], item.get("place_name", ""),
+                    item.get("notes", ""),
+                    json.dumps(item.get("client"), ensure_ascii=False) if item.get("client") is not None else None,
+                    json.dumps(item.get("tags", []), ensure_ascii=False), item["updated_at"],
+                    item.get("deleted_at"), int(item.get("position", 0)),
+                ])
+            await _execute(
+                "INSERT INTO user_address_book "
+                f"({_ADDRESS_BOOK_COLUMNS}) VALUES {placeholders} "
+                "ON CONFLICT(user_id, address_id) DO UPDATE SET "
+                "address = excluded.address, place_name = excluded.place_name, "
+                "notes = excluded.notes, client_json = excluded.client_json, "
+                "tags_json = excluded.tags_json, updated_at = excluded.updated_at, "
+                "deleted_at = excluded.deleted_at, position = excluded.position "
+                "WHERE excluded.updated_at >= user_address_book.updated_at",
+                args,
+            )
+        return await list_user_address_book(user_id)
+
+    user_book = _user_address_books.setdefault(user_id, {})
+    for item in records:
+        current = user_book.get(item["id"])
+        if current is None or item["updated_at"] >= current["updated_at"]:
+            user_book[item["id"]] = dict(item)
+    return _address_book_order(list(user_book.values()))
+
+
 # ── Geocoding cache ──────────────────────────────────────────────────────────
 
 async def get_geocoding_cache_batch(
@@ -784,9 +1126,10 @@ async def count_coupon_redemptions(code: str) -> int:
 async def cpf_has_redeemed_coupon(cpf_cnpj: str) -> bool:
     if not _turso_configured():
         return False
+    cpf_hash = hashlib.sha256(cpf_cnpj.encode("utf-8")).hexdigest()
     r = await _execute(
-        "SELECT 1 FROM coupon_redemptions WHERE cpf_cnpj = ? LIMIT 1",
-        [cpf_cnpj],
+        "SELECT 1 FROM coupon_redemptions WHERE cpf_cnpj = ? OR cpf_cnpj = ? LIMIT 1",
+        [cpf_cnpj, cpf_hash],
     )
     return len(r.get("rows", [])) > 0
 

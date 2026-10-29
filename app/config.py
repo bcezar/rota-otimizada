@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     resend_api_key: Optional[str] = None
     resend_from_email: str = "noreply@rotaotimizada.com.br"
     app_base_url: str = "https://rotaotimizada.com.br"
+    mobile_app_scheme: str = "rota-otimizada-app"
+    dev_email_login_enabled: bool = False
+    account_deletion_enabled: bool = False
     google_client_id: Optional[str] = None
     google_client_secret: Optional[str] = None
     asaas_api_key: Optional[str] = None

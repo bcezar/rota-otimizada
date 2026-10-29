@@ -159,6 +159,12 @@
           </div>
         </div>
 
+        <div class="conta-card" x-show="user">
+          <h2 class="conta-section-title">{{ i18n.account_delete_title }}</h2>
+          <p class="conta-sub-hint">{{ i18n.account_delete_body }}</p>
+          <button class="conta-btn-cancel" @click="openDeletion()">{{ i18n.account_delete_btn }}</button>
+        </div>
+
       </div>
     </template>
 
@@ -185,6 +191,33 @@
     </div>
   </div>
 
+  <!-- Modal: revisar exclusão e reembolso; a confirmação final ocorre no email -->
+  <div class="modal-overlay" x-show="deletionOpen" x-transition @click.self="deletionOpen = false">
+    <div class="modal-card modal-card-sm">
+      <h2 class="clear-confirm-title">{{ i18n.account_delete_title }}</h2>
+      <p class="clear-confirm-sub">{{ i18n.account_delete_body }}</p>
+      <p class="clear-confirm-sub" x-show="deletionLoading">{{ i18n.account_delete_loading }}</p>
+      <template x-if="deletionPreview && !deletionLoading && !deletionSent">
+        <div>
+          <p class="clear-confirm-sub" x-show="deletionPreview.refund_type === 'full'" x-text="window.I18N.account_delete_refund_full.replace('{amount}', formatMoney(deletionPreview.refund_amount, deletionPreview.currency))"></p>
+          <p class="clear-confirm-sub" x-show="deletionPreview.refund_type === 'prorated'" x-text="window.I18N.account_delete_refund_prorated.replace('{amount}', formatMoney(deletionPreview.refund_amount, deletionPreview.currency)).replace('{date}', formatDate(deletionPreview.period_end))"></p>
+          <p class="clear-confirm-sub" x-show="deletionPreview.refund_type === 'none'">{{ i18n.account_delete_refund_none }}</p>
+          <p class="clear-confirm-sub">{{ i18n.account_delete_access }}</p>
+          <p class="clear-confirm-sub" x-show="!deletionPreview.deletion_enabled">{{ i18n.account_delete_disabled }}</p>
+        </div>
+      </template>
+      <p class="clear-confirm-sub" x-show="deletionSent">{{ i18n.account_delete_sent }}</p>
+      <p class="clear-confirm-sub" x-show="deletionError" x-text="deletionError"></p>
+      <div class="clear-confirm-actions">
+        <button class="btn-clear-confirm" @click="requestDeletion()" :disabled="deletionLoading || deletionSending || deletionSent || !deletionPreview || !deletionPreview.deletion_enabled">
+          <span x-show="!deletionSending">{{ i18n.account_delete_send }}</span>
+          <span x-show="deletionSending">{{ i18n.account_cancelling_btn }}</span>
+        </button>
+        <button class="btn-clear-cancel" @click="deletionOpen = false">{{ i18n.account_keep_plan_btn }}</button>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
   <script>
   function accountApp() {
@@ -196,6 +229,12 @@
       proExpiresAt:      null,
       cancelConfirmOpen: false,
       cancelLoading:     false,
+      deletionOpen:     false,
+      deletionLoading:  false,
+      deletionSending:  false,
+      deletionSent:     false,
+      deletionPreview:  null,
+      deletionError:    '',
       _token:            null,
       error:             '',
 
@@ -248,10 +287,52 @@
         }
       },
 
+      async openDeletion() {
+        this.deletionOpen = true;
+        this.deletionLoading = true;
+        this.deletionSent = false;
+        this.deletionError = '';
+        try {
+          const r = await fetch('/api/v1/account/deletion/preview', {
+            headers: { Authorization: `Bearer ${this._token}` },
+          });
+          const data = await r.json();
+          if (!r.ok) throw new Error(data.detail || window.I18N.account_delete_error);
+          this.deletionPreview = data;
+        } catch (e) {
+          this.deletionError = e.message || window.I18N.account_delete_error;
+        } finally {
+          this.deletionLoading = false;
+        }
+      },
+
+      async requestDeletion() {
+        if (!this.deletionPreview || this.deletionSending) return;
+        this.deletionSending = true;
+        this.deletionError = '';
+        try {
+          const r = await fetch('/api/v1/account/deletion/request', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${this._token}` },
+          });
+          const data = await r.json();
+          if (!r.ok) throw new Error(data.detail || window.I18N.account_delete_error);
+          this.deletionSent = true;
+        } catch (e) {
+          this.deletionError = e.message || window.I18N.account_delete_error;
+        } finally {
+          this.deletionSending = false;
+        }
+      },
+
       formatDate(iso) {
         if (!iso) return '—';
         const [y, m, d] = iso.slice(0, 10).split('-');
         return `${d}/${m}/${y}`;
+      },
+
+      formatMoney(amount, currency) {
+        return new Intl.NumberFormat(window.I18N.locale, { style: 'currency', currency }).format(amount || 0);
       },
 
       formatShortDate(iso) {

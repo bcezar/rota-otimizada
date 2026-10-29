@@ -343,6 +343,14 @@ async def stripe_webhook(request: Request):
                 ).strftime("%Y-%m-%d %H:%M:%S")
                 await storage.set_pro_expires_at(user["id"], expires_at)
 
+    elif event_type in ("charge.refunded", "refund.updated"):
+        payment_intent = data_obj.get("payment_intent")
+        if isinstance(payment_intent, dict):
+            payment_intent = payment_intent.get("id")
+        if payment_intent and (event_type == "charge.refunded" or data_obj.get("status") == "succeeded"):
+            from app.routers.account import complete_deletion_for_payment
+            await complete_deletion_for_payment(payment_intent)
+
     return {"ok": True}
 
 
@@ -393,6 +401,12 @@ async def billing_webhook(request: Request):
     elif event in ("PAYMENT_REFUNDED", "PAYMENT_CHARGEBACK_REQUESTED", "PAYMENT_CHARGEBACK_DISPUTE"):
         await storage.set_user_pro(user_id, False)
         await storage.set_pro_expires_at(user_id, None)
+        if event == "PAYMENT_REFUNDED" and entity.get("id"):
+            from app.routers.account import complete_deletion_for_payment
+            await complete_deletion_for_payment(entity["id"])
+    elif event == "PAYMENT_PARTIALLY_REFUNDED" and entity.get("id"):
+        from app.routers.account import complete_deletion_for_payment
+        await complete_deletion_for_payment(entity["id"])
     elif event == "PAYMENT_RECEIVED_IN_CASH_UNDONE":
         # a manual "received in cash" confirmation was reversed — the payment is no
         # longer valid, so treat it the same as an overdue invoice (grace period).

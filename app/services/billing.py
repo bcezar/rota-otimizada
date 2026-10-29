@@ -143,6 +143,34 @@ async def cancel_subscription(subscription_id: str) -> None:
         r.raise_for_status()
 
 
+async def refund_payment(payment_id: str, amount: Optional[float] = None) -> dict:
+    """Request a full or partial refund and return the provider response."""
+    body = {"description": "Reembolso por exclusão de conta"}
+    if amount is not None:
+        body["value"] = round(amount, 2)
+    async with httpx.AsyncClient() as client:
+        r = await client.post(
+            f"{settings.asaas_base_url}/payments/{payment_id}/refund",
+            headers=_headers(),
+            json=body,
+            timeout=20,
+        )
+        r.raise_for_status()
+        return r.json()
+
+
+async def list_payment_refunds(payment_id: str) -> list[dict]:
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            f"{settings.asaas_base_url}/payments/{payment_id}/refunds",
+            headers=_headers(),
+            timeout=10,
+        )
+        r.raise_for_status()
+        data = r.json().get("data", [])
+        return data if isinstance(data, list) else []
+
+
 _UNPAID_STATUSES = ("PENDING", "AWAITING_RISK_ANALYSIS", "OVERDUE")
 
 
@@ -176,6 +204,7 @@ async def list_payments(customer_id: str, limit: int = 12) -> list:
                 "billingType":          p.get("billingType"),
                 "dueDate":              p.get("dueDate"),
                 "paymentDate":          p.get("paymentDate"),
+                "clientPaymentDate":     p.get("clientPaymentDate"),
                 "invoiceUrl":           p.get("invoiceUrl"),
                 "transactionReceiptUrl": p.get("transactionReceiptUrl"),
             }

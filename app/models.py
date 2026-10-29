@@ -58,10 +58,43 @@ class MapImageRequest(BaseModel):
     destination: Coordinates
 
 
+class AddressBookClient(BaseModel):
+    name: str = Field(default="", max_length=200)
+    email: str = Field(default="", max_length=200)
+    phone: str = Field(default="", max_length=80)
+
+
+class SavedRouteStop(BaseModel):
+    id: str = Field(..., min_length=1, max_length=100)
+    address: str = Field(..., min_length=1, max_length=500)
+    description: str = Field(default="", max_length=2000)
+    place_name: str = Field(default="", max_length=200)
+    client: Optional[AddressBookClient] = None
+    tags: list[str] = Field(default_factory=list, max_length=100)
+
+
 class SaveRouteRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     result: RouteResponse
     inputs: RouteRequest
+    stop_details: Optional[list[SavedRouteStop]] = None
+    destination_mode: Optional[Literal["return_to_origin", "custom", "none"]] = None
+
+
+class AddressBookEntry(BaseModel):
+    id: str = Field(..., min_length=1, max_length=100)
+    address: str = Field(..., min_length=1, max_length=500)
+    place_name: str = Field(default="", max_length=200)
+    notes: str = Field(default="", max_length=5000)
+    client: Optional[AddressBookClient] = None
+    tags: list[str] = Field(default_factory=list, max_length=100)
+    updated_at: str = Field(..., min_length=1, max_length=40)
+    deleted_at: Optional[str] = Field(default=None, max_length=40)
+    position: int = Field(default=0, ge=0, le=10000)
+
+
+class AddressBookSyncRequest(BaseModel):
+    addresses: list[AddressBookEntry] = Field(default_factory=list, max_length=1000)
 
 
 class LoginRequest(BaseModel):
@@ -86,6 +119,11 @@ class LoginResponse(BaseModel):
 
 class MagicRequestBody(BaseModel):
     email: str = Field(..., min_length=3, max_length=200)
+    client: Literal["web", "app"] = "web"
+
+
+class MobileAuthExchangeRequest(BaseModel):
+    code: str = Field(..., min_length=20, max_length=100)
 
 
 class MagicRequestResponse(BaseModel):

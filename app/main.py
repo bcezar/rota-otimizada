@@ -24,7 +24,7 @@ from app import storage
 from app.config import settings
 from app.i18n import get_strings
 from app.limiter import limiter
-from app.routers import billing, routes
+from app.routers import account, billing, routes
 
 
 _STATIC = Path(__file__).parent / "static"
@@ -51,12 +51,13 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["https://rotaotimizada.com.br", "https://findmyroute.com.br"],
-    allow_methods=["GET", "POST", "DELETE"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["Content-Type", "Authorization", "X-Anonymous-ID"],
 )
 
 app.include_router(routes.router, prefix="/api/v1")
 app.include_router(billing.router, prefix="/api/v1")
+app.include_router(account.router, prefix="/api/v1")
 
 
 @app.get("/health")
