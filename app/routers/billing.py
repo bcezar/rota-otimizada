@@ -3,7 +3,7 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Body, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app import storage
 from app.config import settings
@@ -59,6 +59,20 @@ class CheckoutRequest(BaseModel):
     cpf_cnpj: str
     billing_type: Literal["PIX", "CREDIT_CARD"] = "PIX"
     coupon_code: Optional[str] = None
+
+
+class SubscriptionCancellationRequest(BaseModel):
+    reason_codes: list[
+        Literal[
+            "stop_limit",
+            "price",
+            "not_using",
+            "missing_features",
+            "technical_issues",
+            "alternative",
+            "other",
+        ]
+    ] = Field(default_factory=list, max_length=7)
 
 
 def _check_digit(base: str, weights: "list[int] | range") -> str:
@@ -210,6 +224,7 @@ async def account(request: Request):
             "is_pro":           user.get("is_pro", False),
             "is_exclusive":     user.get("is_exclusive", False),
             "exclusive_until":  user.get("exclusive_until"),
+            "pro_expires_at":   await storage.get_pro_expires_at(user["id"]),
         },
         "subscription": subscription,
         "payments":     payments,
@@ -218,8 +233,12 @@ async def account(request: Request):
 
 @router.delete("/billing/subscription")
 @limiter.limit("5/minute")
-async def cancel_subscription(request: Request):
+async def cancel_subscription(
+    request: Request,
+    body: Optional[SubscriptionCancellationRequest] = Body(default=None),
+):
     user = await _require_auth(request)
+    reason_codes = body.reason_codes if body else []
 
     # Stripe cancellation (EN deploy)
     stripe_customer_id = user.get("stripe_customer_id")
@@ -238,6 +257,13 @@ async def cancel_subscription(request: Request):
             raise HTTPException(status_code=502, detail=f"Error cancelling subscription: {exc}") from exc
 
         await storage.set_pro_expires_at(user["id"], expires_at)
+        if reason_codes:
+            try:
+                await storage.save_subscription_cancellation_feedback(
+                    user["id"], "stripe", reason_codes
+                )
+            except Exception:
+                logger.exception("Failed to save subscription cancellation feedback for %s", user["id"])
         return {"ok": True, "pro_expires_at": expires_at[:10]}
 
     # Asaas cancellation (PT deploy)
@@ -275,6 +301,13 @@ async def cancel_subscription(request: Request):
     else:
         expires_at = (datetime.now(timezone.utc) + timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
     await storage.set_pro_expires_at(user["id"], expires_at)
+    if reason_codes:
+        try:
+            await storage.save_subscription_cancellation_feedback(
+                user["id"], "asaas", reason_codes
+            )
+        except Exception:
+            logger.exception("Failed to save subscription cancellation feedback for %s", user["id"])
 
     return {"ok": True, "pro_expires_at": expires_at[:10]}
 

@@ -188,6 +188,73 @@ async def deletion_request(request: Request):
     return {"ok": True}
 
 
+@router.get("/account/deletion/status")
+@limiter.limit("30/minute")
+async def deletion_status(request: Request):
+    user = await _require_auth(request)
+    deletion = await storage.get_pending_account_deletion_for_user(user["id"])
+    if not deletion:
+        return {"status": "none"}
+
+    status = deletion.get("status")
+    if status == "requested":
+        return {"status": "awaiting_confirmation"}
+
+    result_status = "refund_processing"
+    refresh_failed = False
+    payment_id = deletion.get("payment_id")
+    provider = deletion.get("provider")
+    target_amount = float(deletion.get("refund_amount") or 0)
+
+    if payment_id and provider == "asaas":
+        try:
+            refunds = await billing.list_payment_refunds(payment_id)
+            matching = [
+                item for item in refunds
+                if item.get("description") == "Reembolso por exclusão de conta"
+            ]
+            if any(item.get("status") == "AWAITING_CRITICAL_ACTION_AUTHORIZATION" for item in matching):
+                result_status = "awaiting_authorization"
+            else:
+                completed_amount = sum(
+                    float(item.get("value") or 0)
+                    for item in matching
+                    if item.get("status") == "DONE"
+                )
+                if target_amount > 0 and completed_amount + 0.005 >= target_amount:
+                    result_status = "refund_completed"
+        except Exception:
+            logger.exception("Could not refresh Asaas refund status for deletion request %s", deletion.get("id"))
+            refresh_failed = True
+    elif payment_id and provider == "stripe":
+        try:
+            refunds = await stripe_billing.list_refunds(payment_id)
+            matching = [
+                item for item in refunds
+                if (item.get("metadata") or {}).get("reason") == "account_deletion"
+            ]
+            if any(item.get("status") == "pending" for item in matching):
+                result_status = "refund_processing"
+            else:
+                completed_amount = sum(
+                    int(item.get("amount") or 0)
+                    for item in matching
+                    if item.get("status") == "succeeded"
+                )
+                if target_amount > 0 and completed_amount >= round(target_amount * 100):
+                    result_status = "refund_completed"
+        except Exception:
+            logger.exception("Could not refresh Stripe refund status for deletion request %s", deletion.get("id"))
+            refresh_failed = True
+
+    return {
+        "status": result_status,
+        "refund_amount": target_amount,
+        "currency": deletion.get("currency") or "BRL",
+        "refresh_failed": refresh_failed,
+    }
+
+
 def _confirmation_page(title: str, message: str) -> HTMLResponse:
     return HTMLResponse(f"""<!doctype html><html lang="pt-br"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{html.escape(title)}</title><body style="font-family:system-ui,sans-serif;background:#f8fafc;color:#0f172a;max-width:560px;margin:10vh auto;padding:24px"><h1>{html.escape(title)}</h1><p>{html.escape(message)}</p></body></html>""")
 

@@ -20,6 +20,7 @@ _sessions: dict[str, str] = {}  # token → user_id
 _anonymous_optimization_usage: dict[tuple[str, str], int] = {}
 _user_address_books: dict[str, dict[str, dict]] = {}
 _account_deletion_requests: dict[str, dict] = {}
+_subscription_cancellation_feedback: list[dict] = []
 
 
 def _turso_configured() -> bool:
@@ -110,6 +111,11 @@ async def init_db() -> None:
         "CREATE TABLE IF NOT EXISTS feedback "
         "(id TEXT PRIMARY KEY, user_id TEXT, signup_source TEXT, rating INTEGER NOT NULL, "
         "comment TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')))"
+    )
+    await _execute(
+        "CREATE TABLE IF NOT EXISTS subscription_cancellation_feedback "
+        "(id TEXT PRIMARY KEY, user_id TEXT, provider TEXT NOT NULL, reason_codes TEXT NOT NULL, "
+        "created_at TEXT NOT NULL DEFAULT (datetime('now')))"
     )
     await _execute(
         "CREATE TABLE IF NOT EXISTS anonymous_optimization_usage "
@@ -641,13 +647,14 @@ async def get_pending_account_deletion_by_payment(payment_id: str) -> Optional[d
 async def get_pending_account_deletion_for_user(user_id: str) -> Optional[dict]:
     if _turso_configured():
         result = await _execute(
-            "SELECT id,status FROM account_deletion_requests WHERE user_id=? "
+            "SELECT id,status,provider,payment_id,refund_amount,currency FROM account_deletion_requests WHERE user_id=? "
             "AND ((status='requested' AND expires_at>datetime('now')) OR status IN ('refund_processing','awaiting_refund')) "
             "ORDER BY created_at DESC LIMIT 1",
             [user_id],
         )
         rows = result.get('rows', [])
-        return {'id': _cell(rows[0][0]), 'status': _cell(rows[0][1])} if rows else None
+        return dict(zip(('id', 'status', 'provider', 'payment_id', 'refund_amount', 'currency'),
+                        (_cell(value) for value in rows[0]))) if rows else None
     requests = [r for r in _account_deletion_requests.values()
                 if r.get('user_id') == user_id and r.get('status') in ('requested', 'refund_processing', 'awaiting_refund')]
     return dict(requests[-1]) if requests else None
@@ -672,6 +679,10 @@ async def finish_account_deletion(request_id: str, user_id: str) -> None:
         await _execute("DELETE FROM saved_routes WHERE user_id=?", [user_id])
         await _execute("DELETE FROM user_address_book WHERE user_id=?", [user_id])
         await _execute("UPDATE feedback SET user_id=NULL,comment=NULL WHERE user_id=?", [user_id])
+        await _execute(
+            "UPDATE subscription_cancellation_feedback SET user_id=NULL WHERE user_id=?",
+            [user_id],
+        )
         await _execute("UPDATE contact_messages SET user_id=NULL,email='[removido]' WHERE user_id=?", [user_id])
         redemptions = await _execute("SELECT code,cpf_cnpj FROM coupon_redemptions WHERE user_id=?", [user_id])
         for row in redemptions.get('rows', []):
@@ -694,6 +705,9 @@ async def finish_account_deletion(request_id: str, user_id: str) -> None:
         if route.get('user_id') == user_id:
             _saved.pop(code, None)
     _user_address_books.pop(user_id, None)
+    for feedback in _subscription_cancellation_feedback:
+        if feedback.get('user_id') == user_id:
+            feedback['user_id'] = None
     for request in _account_deletion_requests.values():
         if request['id'] == request_id:
             request.update({'user_id': None, 'token_hash': None, 'status': 'completed'})
@@ -840,6 +854,39 @@ async def set_pro_expires_at(user_id: str, expires_at: Optional[str]) -> None:
         )
     elif user_id in _users:
         _users[user_id]["pro_expires_at"] = expires_at
+
+
+async def get_pro_expires_at(user_id: str) -> Optional[str]:
+    if _turso_configured():
+        result = await _execute("SELECT pro_expires_at FROM users WHERE id=?", [user_id])
+        rows = result.get("rows", [])
+        return _cell(rows[0][0]) if rows else None
+    return _users.get(user_id, {}).get("pro_expires_at")
+
+
+async def save_subscription_cancellation_feedback(
+    user_id: str,
+    provider: str,
+    reason_codes: list[str],
+) -> None:
+    if not reason_codes:
+        return
+    feedback_id = str(uuid.uuid4())
+    serialized_reasons = json.dumps(sorted(set(reason_codes)))
+    if _turso_configured():
+        await _execute(
+            "INSERT INTO subscription_cancellation_feedback "
+            "(id,user_id,provider,reason_codes) VALUES (?,?,?,?)",
+            [feedback_id, user_id, provider, serialized_reasons],
+        )
+        return
+    _subscription_cancellation_feedback.append({
+        "id": feedback_id,
+        "user_id": user_id,
+        "provider": provider,
+        "reason_codes": serialized_reasons,
+        "created_at": _now_iso(),
+    })
 
 
 async def set_exclusive_until(user_id: str, until: Optional[str]) -> None:
