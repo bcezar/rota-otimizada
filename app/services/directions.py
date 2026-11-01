@@ -27,6 +27,24 @@ def _decode_polyline(encoded: str) -> list[tuple[float, float]]:
     return points
 
 
+def _encode_polyline(points: list[tuple[float, float]]) -> str:
+    encoded: list[str] = []
+    previous_lat = previous_lng = 0
+
+    for latitude, longitude in points:
+        lat = round(latitude * 1e5)
+        lng = round(longitude * 1e5)
+        for delta in (lat - previous_lat, lng - previous_lng):
+            value = ~(delta << 1) if delta < 0 else delta << 1
+            while value >= 0x20:
+                encoded.append(chr((0x20 | (value & 0x1f)) + 63))
+                value >>= 5
+            encoded.append(chr(value + 63))
+        previous_lat, previous_lng = lat, lng
+
+    return "".join(encoded)
+
+
 async def get_route_polyline(
     points: list[tuple[float, float]],
 ) -> tuple[list[tuple[float, float]] | None, str | None, str | None]:
@@ -63,7 +81,25 @@ async def get_route_polyline(
     if status != "OK" or not data.get("routes"):
         return None, None, status
 
-    encoded = data["routes"][0].get("overview_polyline", {}).get("points", "")
-    if not encoded:
+    route = data["routes"][0]
+    path: list[tuple[float, float]] = []
+    for leg in route.get("legs", []):
+        for step in leg.get("steps", []):
+            step_encoded = step.get("polyline", {}).get("points", "")
+            if not step_encoded:
+                continue
+            step_path = _decode_polyline(step_encoded)
+            if path and step_path and path[-1] == step_path[0]:
+                path.extend(step_path[1:])
+            else:
+                path.extend(step_path)
+
+    if not path:
+        overview = route.get("overview_polyline", {}).get("points", "")
+        if overview:
+            path = _decode_polyline(overview)
+
+    if not path:
         return None, None, "EMPTY_POLYLINE"
-    return _decode_polyline(encoded), encoded, None
+
+    return path, _encode_polyline(path), None
