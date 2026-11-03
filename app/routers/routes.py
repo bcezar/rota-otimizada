@@ -669,6 +669,12 @@ async def optimize_route(request: Request, body: RouteRequest = Body(...)):
         destination=destination_info,
         maps_url=_build_maps_url(origin_info, destination_info, optimized_route),
         total_duration_min=round(total_dur, 1) if total_dur is not None else None,
+        origin_to_first_stop_distance_km=(
+            round(matrix[full_order[0]][full_order[first]], 2) if body.origin else None
+        ),
+        last_stop_to_destination_distance_km=(
+            round(matrix[full_order[last - 1]][full_order[-1]], 2) if body.destination else None
+        ),
     )
     if is_anonymous and not await storage.consume_anonymous_optimization(
         guest_id, usage_date, _ANONYMOUS_DAILY_OPTIMIZATION_LIMIT

@@ -46,6 +46,8 @@ class RouteResponse(BaseModel):
     destination: Optional[OriginInfo] = None
     maps_url: Optional[str] = None
     total_duration_min: Optional[float] = None
+    origin_to_first_stop_distance_km: Optional[float] = None
+    last_stop_to_destination_distance_km: Optional[float] = None
 
 
 class PolylineRequest(BaseModel):
